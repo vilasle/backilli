@@ -14,8 +14,8 @@ func TestWrite(t *testing.T) {
 	if err := env.LoadEnvfile("test.env"); err != nil {
 		t.Fatal(err)
 	}
-	path := os.Getenv("PATH_SRC")
-	pathSrc := os.Getenv("PATH_DST")
+	path := env.Get("PATH_SRC")
+	pathSrc := env.Get("PATH_DST")
 
 	wd, err := os.OpenFile(pathSrc, os.O_CREATE|os.O_WRONLY, os.ModePerm)
 	if err != nil {
@@ -60,7 +60,7 @@ func TestRead(t *testing.T) {
 	if err := env.LoadEnvfile("test.env"); err != nil {
 		t.Fatal(err)
 	}
-	path := os.Getenv("PATH_SRC")
+	path := env.Get("PATH_SRC")
 
 	fd, err := os.OpenFile(path, os.O_CREATE|os.O_APPEND, os.ModeAppend)
 	if err != nil {
@@ -108,7 +108,7 @@ func TestLs(t *testing.T) {
 	if err := env.LoadEnvfile("test.env"); err != nil {
 		t.Fatal(err)
 	}
-	path := os.Getenv("PATH_DIR")
+	path := env.Get("PATH_DIR")
 	localClient := LocalClient{}
 	ls, err := localClient.Ls(path)
 	if err != nil {
@@ -140,7 +140,7 @@ func TestRemove(t *testing.T) {
 	if err := env.LoadEnvfile("test.env"); err != nil {
 		t.Fatal(err)
 	}
-	path := os.Getenv("PATH_SRC")
+	path := env.Get("PATH_SRC")
 
 	fd, err := os.OpenFile(path, os.O_CREATE|os.O_APPEND, os.ModeAppend)
 	if err != nil {

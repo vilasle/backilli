@@ -22,3 +22,8 @@ func LoadEnvfile(path string) error {
 	}
 	return sc.Err()
 }
+
+func Get(key string) string{
+	v := os.Getenv(key)
+	return v
+}

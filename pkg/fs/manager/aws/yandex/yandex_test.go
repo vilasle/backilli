@@ -15,11 +15,11 @@ func TestWrite(t *testing.T) {
 	}
 
 	conf := unit.ClientConfig{
-		RootCloud:  os.Getenv("ROOT_PLACE"),
-		BucketName: os.Getenv("BUCKET_NAME"),
+		RootCloud:  env.Get("ROOT_PLACE"),
+		BucketName: env.Get("BUCKET_NAME"),
 	}
 
-	path := os.Getenv("PATH_SRC")
+	path := env.Get("PATH_SRC")
 	wd, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY, os.ModePerm)
 	if err != nil {
 		t.Fatal(err)
@@ -48,10 +48,10 @@ func TestRead(t *testing.T) {
 	if err := env.LoadEnvfile("test.env"); err != nil {
 		t.Fatal(err)
 	}
-	path := fmt.Sprintf("%s%s", os.Getenv("ROOT_PLACE"),os.Getenv("PATH_DST"))
+	path := fmt.Sprintf("%s%s", env.Get("ROOT_PLACE"),env.Get("PATH_DST"))
 	conf := unit.ClientConfig{
-		RootCloud:  os.Getenv("ROOT_PLACE"),
-		BucketName: os.Getenv("BUCKET_NAME"),
+		RootCloud:  env.Get("ROOT_PLACE"),
+		BucketName: env.Get("BUCKET_NAME"),
 	}
 
 	client, err := NewClient(conf)
@@ -82,8 +82,8 @@ func TestLs(t *testing.T) {
 	}
 
 	conf := unit.ClientConfig{
-		RootCloud:  os.Getenv("ROOT_PLACE"),
-		BucketName: os.Getenv("BUCKET_NAME"),
+		RootCloud:  env.Get("ROOT_PLACE"),
+		BucketName: env.Get("BUCKET_NAME"),
 	}
 
 	client, err := NewClient(conf)
@@ -91,7 +91,7 @@ func TestLs(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ls, err := client.Ls(os.Getenv("ROOT_PLACE"))
+	ls, err := client.Ls(env.Get("ROOT_PLACE"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -121,8 +121,8 @@ func TestRemove(t *testing.T) {
 	}
 
 	conf := unit.ClientConfig{
-		RootCloud:  os.Getenv("ROOT_PLACE"),
-		BucketName: os.Getenv("BUCKET_NAME"),
+		RootCloud:  env.Get("ROOT_PLACE"),
+		BucketName: env.Get("BUCKET_NAME"),
 	}
 
 	client, err := NewClient(conf)
@@ -130,7 +130,7 @@ func TestRemove(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := client.Remove(os.Getenv("PATH_CLOUD_SRC")); err != nil {
+	if err := client.Remove(env.Get("PATH_CLOUD_SRC")); err != nil {
 		t.Fatal(err)
 	}
 }

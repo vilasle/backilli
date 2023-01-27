@@ -15,18 +15,18 @@ func TestWrite(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	path := os.Getenv("PATH_SRC")
-	pathSrc := os.Getenv("PATH_DST")
-	address := os.Getenv("ADDRESS")
+	path := env.Get("PATH_SRC")
+	pathSrc := env.Get("PATH_DST")
+	address := env.Get("ADDRESS")
 	
-	port, err := strconv.Atoi(os.Getenv("PORT"))
+	port, err := strconv.Atoi(env.Get("PORT"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	domain := os.Getenv("DOMAIN")
-	user := os.Getenv("USER")
-	password := os.Getenv("PASSWORD")
-	mountPoint := os.Getenv("MOUNT_POINT")
+	domain := env.Get("DOMAIN")
+	user := env.Get("USER")
+	password := env.Get("PASSWORD")
+	mountPoint := env.Get("MOUNT_POINT")
 
 	wd, err := os.OpenFile(pathSrc, os.O_CREATE|os.O_WRONLY, os.ModePerm)
 	if err != nil {
@@ -72,17 +72,17 @@ func TestRead(t *testing.T) {
 
 	testSet := getTestSet()
 
-	path := os.Getenv("PATH_SRC")
-	address := os.Getenv("ADDRESS")
+	path := env.Get("PATH_SRC")
+	address := env.Get("ADDRESS")
 	
-	port, err := strconv.Atoi(os.Getenv("PORT"))
+	port, err := strconv.Atoi(env.Get("PORT"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	domain := os.Getenv("DOMAIN")
-	user := os.Getenv("USER")
-	password := os.Getenv("PASSWORD")
-	mountPoint := os.Getenv("MOUNT_POINT")
+	domain := env.Get("DOMAIN")
+	user := env.Get("USER")
+	password := env.Get("PASSWORD")
+	mountPoint := env.Get("MOUNT_POINT")
 	
 	client, err := NewClient(unit.ClientConfig{
 		Host: address,
@@ -119,17 +119,17 @@ func TestLs(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	path := os.Getenv("PATH_DIR")
-	address := os.Getenv("ADDRESS")
+	path := env.Get("PATH_DIR")
+	address := env.Get("ADDRESS")
 	
-	port, err := strconv.Atoi(os.Getenv("PORT"))
+	port, err := strconv.Atoi(env.Get("PORT"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	domain := os.Getenv("DOMAIN")
-	user := os.Getenv("USER")
-	password := os.Getenv("PASSWORD")
-	mountPoint := os.Getenv("MOUNT_POINT")
+	domain := env.Get("DOMAIN")
+	user := env.Get("USER")
+	password := env.Get("PASSWORD")
+	mountPoint := env.Get("MOUNT_POINT")
 
 	client, err := NewClient(unit.ClientConfig{
 		Host: address,
@@ -171,18 +171,18 @@ func TestRemove(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	path := os.Getenv("PATH_SRC")
+	path := env.Get("PATH_SRC")
 
-	address := os.Getenv("ADDRESS")
+	address := env.Get("ADDRESS")
 	
-	port, err := strconv.Atoi(os.Getenv("PORT"))
+	port, err := strconv.Atoi(env.Get("PORT"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	domain := os.Getenv("DOMAIN")
-	user := os.Getenv("USER")
-	password := os.Getenv("PASSWORD")
-	mountPoint := os.Getenv("MOUNT_POINT")
+	domain := env.Get("DOMAIN")
+	user := env.Get("USER")
+	password := env.Get("PASSWORD")
+	mountPoint := env.Get("MOUNT_POINT")
 
 	defer func() {
 		if r := recover(); r != nil {

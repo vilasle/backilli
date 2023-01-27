@@ -5,3 +5,7 @@
 *.so
 *.dylib
 *.env
+*.yml
+*.yaml
+*.cnf
+*.conf
