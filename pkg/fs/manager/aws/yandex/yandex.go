@@ -12,6 +12,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	env "github.com/vilamslep/backilli/pkg/fs/environment"
 	"github.com/vilamslep/backilli/pkg/fs/unit"
 )
 
@@ -33,6 +34,10 @@ func NewClient(conf unit.ClientConfig) (*YandexClient, error) {
 		return nil, ErrLoadingConfiguration
 	}
 
+	env.Set("AWS_REGION", conf.Region)
+	env.Set("AWS_ACCESS_KEY_ID", conf.KeyId)
+	env.Set("AWS_SECRET_ACCESS_KEY", conf.KeySecret)
+
 	s3client := s3.NewFromConfig(cfg)
 
 	osSep := "/"
@@ -42,7 +47,7 @@ func NewClient(conf unit.ClientConfig) (*YandexClient, error) {
 
 	return &YandexClient{
 		s3client:   s3client,
-		cloudRoot:  conf.RootCloud,
+		cloudRoot:  conf.Root,
 		cloudSep:   "/",
 		osSep:      osSep,
 		bucketName: conf.BucketName,

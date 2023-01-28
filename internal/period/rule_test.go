@@ -18,27 +18,27 @@ func TestMonthRule(t *testing.T) {
 	date5 := time.Date(2022, 3, 1, 0, 0, 0, 0, time.Now().Location())
 
 	rule1 := MonthRule{
-		PathOfMonth:  BEGGINING,
+		PartOfMonth:  BEGGINING,
 		ExcludeMonth: []int{},
 	}
 
 	rule2 := MonthRule{
-		PathOfMonth:  MIDDLE,
+		PartOfMonth:  MIDDLE,
 		ExcludeMonth: []int{},
 	}
 
 	rule3 := MonthRule{
-		PathOfMonth:  FINISH,
+		PartOfMonth:  FINISH,
 		ExcludeMonth: []int{},
 	}
 
 	rule4 := MonthRule{
-		PathOfMonth:  BEGGINING,
+		PartOfMonth:  BEGGINING,
 		ExcludeMonth: []int{},
 	}
 
 	rule5 := MonthRule{
-		PathOfMonth:  BEGGINING,
+		PartOfMonth:  BEGGINING,
 		ExcludeMonth: []int{MAR},
 	}
 
@@ -63,25 +63,21 @@ func TestMonthRule(t *testing.T) {
 	}
 }
 
-func TestDaysOfWeekRule(t *testing.T) {
+func TestWeekdaysRule(t *testing.T) {
+	//Sunday
+	date1 := time.Date(2022, 12, 25, 0, 0, 0, 0, time.Now().Location())
+	//Monday
+	date2 := time.Date(2022, 12, 26, 0, 0, 0, 0, time.Now().Location())
 
-		//Sunday
-		date1 := time.Date(2022, 12, 25, 0, 0, 0, 0, time.Now().Location())
-		//Monday
-		date2 := time.Date(2022, 12, 26, 0, 0, 0, 0, time.Now().Location())
-		
-		rule := DaysOfWeekRule{
-			ExcludeDays: []int{Sun, Sat},
-		}
+	rule := WeekdaysRule{
+		ExcludeDays: []int{Sun, Sat},
+	}
 
-		if ok := rule.NeedToExecute(date1); ok {
-			t.Log("It's Sunday. Shoud be False")
-		}
+	if ok := rule.NeedToExecute(date1); ok {
+		t.Log("It's Sunday. Shoud be False")
+	}
 
-		if ok := rule.NeedToExecute(date2); !ok {
-			t.Log("It's Monday. Shoud be True")
-		}
-
-
-
+	if ok := rule.NeedToExecute(date2); !ok {
+		t.Log("It's Monday. Shoud be True")
+	}
 }

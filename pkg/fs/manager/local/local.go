@@ -9,10 +9,14 @@ import (
 	"github.com/vilamslep/backilli/pkg/fs/unit"
 )
 
-type LocalClient struct {}
+type LocalClient struct {
+	root string
+}
 
 func NewClient(conf unit.ClientConfig) LocalClient {
-	return LocalClient{}
+	return LocalClient{
+		root: conf.Root,
+	}
 }
 
 func (c LocalClient) Read(path string) ([]byte, error) {

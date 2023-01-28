@@ -2,11 +2,17 @@ package period
 
 import "time"
 
+const(
+	MONTHLY = "monthly"
+)
+
 //Path of month
+type PartOfMonth string
+
 const (
-	BEGGINING = 1
-	MIDDLE    = 2
-	FINISH    = 3
+	BEGGINING = "beggining"
+	MIDDLE    = "middle"
+	FINISH    = "finish"
 )
 
 const (
@@ -25,8 +31,41 @@ const (
 )
 
 type MonthRule struct {
-	PathOfMonth  int
+	PartOfMonth  PartOfMonth
 	ExcludeMonth []int
+}
+
+func NewMonthRule(month []int, partOfMonth PartOfMonth) MonthRule {
+	m := map[int]int{
+		JAN: 0,
+		FEB: 0,
+		MAR: 0,
+		APR: 0,
+		MAY: 0,
+		JUN: 0,
+		JUL: 0,
+		AUG: 0,
+		SEP: 0,
+		OCT: 0,
+		NOV: 0,
+		DEC: 0,
+	}
+	
+	for _, v := range month {
+		m[v]++
+	}
+
+	excludeMonth := make([]int, 0)
+	for k, v := range month {
+		if v > 0 {
+			excludeMonth = append(excludeMonth, k)
+		}
+	} 
+
+	return MonthRule{
+		ExcludeMonth: excludeMonth,
+		PartOfMonth: partOfMonth,
+	}
 }
 
 func (r MonthRule) NeedToExecute(t time.Time) bool {
@@ -38,15 +77,15 @@ func (r MonthRule) NeedToExecute(t time.Time) bool {
 		return false
 	}
 
-	if r.PathOfMonth == BEGGINING && day == 1 {
+	if r.PartOfMonth == BEGGINING && day == 1 {
 		return true
 	}
 
-	if r.PathOfMonth == MIDDLE && day == 15 {
+	if r.PartOfMonth == MIDDLE && day == 15 {
 		return true
 	}
 
-	if r.PathOfMonth == FINISH && isFinishOfMonth(t) {
+	if r.PartOfMonth == FINISH && isFinishOfMonth(t) {
 		return true
 	}
 	return false

@@ -27,3 +27,7 @@ func Get(key string) string{
 	v := os.Getenv(key)
 	return v
 }
+
+func Set(key string, value string) error {
+	return os.Setenv(key, value)
+}

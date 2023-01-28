@@ -17,3 +17,20 @@ func TestNewProcessConfig(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestInitProcess(t *testing.T) {
+	if err := env.LoadEnvfile("test.env"); err != nil {
+		t.Fatal(err)
+	}
+
+	path := env.Get("CONFIG")
+
+	pc, err := NewProcessConfig(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := InitProcess(pc); err != nil {
+		t.Fatal(err)
+	}
+}

@@ -15,7 +15,7 @@ func TestWrite(t *testing.T) {
 	}
 
 	conf := unit.ClientConfig{
-		RootCloud:  env.Get("ROOT_PLACE"),
+		Root:  env.Get("ROOT_PLACE"),
 		BucketName: env.Get("BUCKET_NAME"),
 	}
 
@@ -50,7 +50,7 @@ func TestRead(t *testing.T) {
 	}
 	path := fmt.Sprintf("%s%s", env.Get("ROOT_PLACE"),env.Get("PATH_DST"))
 	conf := unit.ClientConfig{
-		RootCloud:  env.Get("ROOT_PLACE"),
+		Root:  env.Get("ROOT_PLACE"),
 		BucketName: env.Get("BUCKET_NAME"),
 	}
 
@@ -82,7 +82,7 @@ func TestLs(t *testing.T) {
 	}
 
 	conf := unit.ClientConfig{
-		RootCloud:  env.Get("ROOT_PLACE"),
+		Root:  env.Get("ROOT_PLACE"),
 		BucketName: env.Get("BUCKET_NAME"),
 	}
 
@@ -121,7 +121,7 @@ func TestRemove(t *testing.T) {
 	}
 
 	conf := unit.ClientConfig{
-		RootCloud:  env.Get("ROOT_PLACE"),
+		Root:  env.Get("ROOT_PLACE"),
 		BucketName: env.Get("BUCKET_NAME"),
 	}
 

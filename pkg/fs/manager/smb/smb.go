@@ -14,6 +14,7 @@ type SmbClient struct {
 	mountPoint *smb2.Share
 	conn       net.Conn
 	session    *smb2.Session
+	root       string
 }
 
 func NewClient(conf unit.ClientConfig) (*SmbClient, error) {
@@ -44,6 +45,7 @@ func NewClient(conf unit.ClientConfig) (*SmbClient, error) {
 		mountPoint: share,
 		conn:       conn,
 		session:    s,
+		root:       conf.Root,
 	}
 	return &c, nil
 }

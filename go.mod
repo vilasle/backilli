@@ -7,6 +7,8 @@ require (
 	github.com/aws/aws-sdk-go-v2/config v1.18.8
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.30.0
 	github.com/hirochachacha/go-smb2 v1.1.0
+	github.com/lib/pq v1.10.7
+	github.com/pkg/errors v0.9.1
 	gopkg.in/yaml.v2 v2.2.8
 )
 
