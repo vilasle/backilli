@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"runtime"
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -21,12 +20,16 @@ var ErrLoadingConfiguration = fmt.Errorf("failed to load cloud configuration")
 type YandexClient struct {
 	s3client   *s3.Client
 	bucketName string
-	osSep      string
 	cloudSep   string
 	cloudRoot  string
 }
 
 func NewClient(conf unit.ClientConfig) (*YandexClient, error) {
+
+	env.Set("AWS_REGION", conf.Region)
+	env.Set("AWS_ACCESS_KEY_ID", conf.KeyId)
+	env.Set("AWS_SECRET_ACCESS_KEY", conf.KeySecret)
+
 	customResolver := aws.EndpointResolverWithOptionsFunc(yandexResolver)
 
 	cfg, err := config.LoadDefaultConfig(context.Background(), config.WithEndpointResolverWithOptions(customResolver))
@@ -34,22 +37,12 @@ func NewClient(conf unit.ClientConfig) (*YandexClient, error) {
 		return nil, ErrLoadingConfiguration
 	}
 
-	env.Set("AWS_REGION", conf.Region)
-	env.Set("AWS_ACCESS_KEY_ID", conf.KeyId)
-	env.Set("AWS_SECRET_ACCESS_KEY", conf.KeySecret)
-
 	s3client := s3.NewFromConfig(cfg)
-
-	osSep := "/"
-	if runtime.GOOS == "windows" {
-		osSep = "\\"
-	}
 
 	return &YandexClient{
 		s3client:   s3client,
 		cloudRoot:  conf.Root,
 		cloudSep:   "/",
-		osSep:      osSep,
 		bucketName: conf.BucketName,
 	}, nil
 }
@@ -90,18 +83,21 @@ func (c YandexClient) Write(src string, dst string) error {
 		return err
 	}
 
-	slpath := strings.Split(src, c.osSep)
-	start := 0
-	if len(slpath) > 1 {
-		for i := range slpath {
-			if slpath[i] == dst {
-				start = (i + 1)
-				break
-			}
-		}
+	cloudRoot := c.cloudRoot
+	if cloudRoot[len(cloudRoot)-1] == 0x5c ||
+		cloudRoot[len(cloudRoot)-1] == 0x2f {
+		cloudRoot = cloudRoot[:len(cloudRoot)-1]
 	}
 
-	yapath := fmt.Sprintf("%s%s%s", c.cloudRoot, c.cloudSep, strings.Join(slpath[start:], c.cloudRoot))
+	s := []byte(dst)
+	for i := range s {
+		if s[i] == 0x5c {
+			s[i] = 0x2f
+		} 
+	}
+	ns := string(s)
+
+	yapath := fmt.Sprintf("%s%s%s", cloudRoot, c.cloudSep, ns)
 
 	object := &s3.PutObjectInput{
 		Bucket:        aws.String(c.bucketName),
@@ -135,7 +131,7 @@ func (c YandexClient) Ls(path string) ([]unit.File, error) {
 		path := strings.Split(*object.Key, "/")
 
 		name := path[len(path)-1]
-		if name != ""  {
+		if name != "" {
 			files = append(files, unit.File{
 				Date: *object.LastModified,
 				Name: name,

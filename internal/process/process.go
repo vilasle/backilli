@@ -12,17 +12,17 @@ import (
 	"github.com/vilamslep/backilli/internal/period"
 	"github.com/vilamslep/backilli/internal/tool"
 	"github.com/vilamslep/backilli/internal/tool/postgresql"
-	"github.com/vilamslep/backilli/pkg/fs"
+	"github.com/vilamslep/backilli/pkg/fs/manager"
 	"github.com/vilamslep/backilli/pkg/fs/unit"
 )
 
-type Volume map[string]fs.ManagerAtomic
+type Volume map[string]manager.ManagerAtomic
 
 type Process struct {
 	catalogs Catalogs
 	email    []Email
 	entitys  []entity.Entity
-	volumes Volume
+	volumes  Volume
 }
 
 func NewProcess() (*Process, error) {
@@ -31,22 +31,20 @@ func NewProcess() (*Process, error) {
 
 func (ps *Process) Run() {
 	t := time.Now()
+	s := entity.EntitySetting{Tempdir: ps.catalogs.Transitory}
 	for _, ent := range ps.entitys {
 		if !ent.CheckPeriodRules(t) {
 			continue
 		}
-		if ent.Backup(); ent.Err() != nil {
+		if ent.Backup(s, t); ent.Err() != nil {
 			log.Println(ent.Err())
 			continue
-		}
-		if ent.NeedToCompress() {
-			//compress ent.Path
 		}
 	}
 }
 
 func (pc *Process) Close() error {
-	e := make([]error,0)
+	e := make([]error, 0)
 	for _, v := range pc.volumes {
 		if err := v.Close(); err != nil {
 			e = append(e, err)
@@ -55,10 +53,10 @@ func (pc *Process) Close() error {
 	if len(e) > 0 {
 		err := errors.New("closing error")
 		for _, ferr := range e {
-			errors.Wrap(err, ferr.Error())
+			err = errors.Wrap(err, ferr.Error())
 		}
 		return err
-	} 
+	}
 	return nil
 }
 
@@ -76,12 +74,12 @@ func InitProcess(conf ProcessConfig) (*Process, error) {
 	process.catalogs = conf.Catalogs
 	process.email = conf.Emails
 
-	cfgs, err := convertConfigForFSManagers(conf.Volumes) 
+	cfgs, err := convertConfigForFSManagers(conf.Volumes)
 	if err != nil {
 		return nil, err
 	}
 
-	if ms, err := fs.InitManagersFromConfigs(cfgs); err == nil {
+	if ms, err := manager.InitManagersFromConfigs(cfgs); err == nil {
 		process.volumes = ms
 	} else {
 		return nil, err
@@ -94,9 +92,8 @@ func InitProcess(conf ProcessConfig) (*Process, error) {
 	return &process, nil
 }
 
-func (pc *Process) setEntityFromTask(tasks []Task) (error) {
+func (pc *Process) setEntityFromTask(tasks []Task) error {
 	for _, v := range tasks {
-
 		rule := period.PeriodRule{}
 		if v.Type == period.DAILY {
 			rule.Day = period.NewWeekdaysRule(v.Repeat)
@@ -111,7 +108,7 @@ func (pc *Process) setEntityFromTask(tasks []Task) (error) {
 		}
 
 		if len(v.PgDatabases) > 0 {
-			
+
 		}
 	}
 	return nil
@@ -124,26 +121,30 @@ func (pc *Process) pgBackup(t Task) []entity.PostgresEntity {
 func (pc *Process) filesBackup(t Task, rule period.PeriodRule) {
 	for _, r := range t.Files {
 		e := entity.FileEntity{
-			FilePath:    r.Path,
-			Compress:    t.Compress,
-			PeriodRule:  rule,
+			Id:         t.Id,
+			FilePath:   r.Path,
+			Compress:   t.Compress,
+			PeriodRule: rule,
+		}
+		if len(r.IncludeRegexp) > 0 {
+			if re, err := regexp.Compile(r.IncludeRegexp); err == nil {
+				e.IncludeRegexp = re
+			} else {
+				//TODO log
+			}
 		}
 
-		if r, err := regexp.Compile(r.IncludeRegexp); err == nil {
-			e.IncludeRegexp = r
-		} else {
-			//TODO log
-		}
-
-		if r, err := regexp.Compile(r.ExcludeRegexp); err == nil {
-			e.ExcludeRegexp = r
-		} else {
-			//TODO log
+		if len(r.ExcludeRegexp) > 0 {
+			if re, err := regexp.Compile(r.ExcludeRegexp); err == nil {
+				e.ExcludeRegexp = re
+			} else {
+				//TODO log
+			}
 		}
 
 		for _, m := range t.Volumes {
 			if v, ok := pc.volumes[m]; ok {
-				e.FileManagers = append(e.FileManagers, v)	
+				e.FileManagers = append(e.FileManagers, v)
 			}
 		}
 		pc.entitys = append(pc.entitys, e)
@@ -163,7 +164,7 @@ func convertConfigForFSManagers(ms []VolumeConfig) ([]unit.ClientConfig, error) 
 		c.Root = v.Root
 		c.KeyId = v.KeyId
 		c.KeySecret = v.KeySecret
-
+		c.Region = v.Region
 		if v.Type == SMBVolume {
 			socket := strings.Split(v.Address, ":")
 			c.Host = socket[0]
@@ -180,13 +181,13 @@ func convertConfigForFSManagers(ms []VolumeConfig) ([]unit.ClientConfig, error) 
 
 		switch v.Type {
 		case LocalVolume:
-			c.Type = fs.LOCAL
+			c.Type = manager.LOCAL
 		case SMBVolume:
-			c.Type = fs.SMB
+			c.Type = manager.SMB
 		case YandexStorageVolume:
-			c.Type = fs.YANDEX
+			c.Type = manager.YANDEX
 		default:
-			return nil ,errors.New("unexpected type of volume")
+			return nil, errors.New("unexpected type of volume")
 		}
 
 		res = append(res, c)

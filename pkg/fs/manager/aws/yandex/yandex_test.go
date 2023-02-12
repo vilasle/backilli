@@ -17,6 +17,9 @@ func TestWrite(t *testing.T) {
 	conf := unit.ClientConfig{
 		Root:  env.Get("ROOT_PLACE"),
 		BucketName: env.Get("BUCKET_NAME"),
+		Region: env.Get("AWS_REGION"),
+		KeyId: env.Get("AWS_ACCESS_KEY_ID"),
+		KeySecret: env.Get("AWS_SECRET_ACCESS_KEY"),
 	}
 
 	path := env.Get("PATH_SRC")

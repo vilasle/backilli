@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 
+	"github.com/vilamslep/backilli/pkg/fs"
 	"github.com/vilamslep/backilli/pkg/fs/unit"
 )
 
@@ -29,15 +30,15 @@ func (c LocalClient) Read(path string) ([]byte, error) {
 	stat, err := fd.Stat()
 	if err != nil {
 		return nil, err
-	}	
+	}
 
-	res := make([]byte,stat.Size())
+	res := make([]byte, stat.Size())
 	buffer := make([]byte, 2048)
 
 	offs := 0
 	for {
 		n, err := fd.Read(buffer)
-		
+
 		if err == io.EOF {
 			break
 		}
@@ -46,7 +47,7 @@ func (c LocalClient) Read(path string) ([]byte, error) {
 			return nil, err
 		}
 		for i := 0; i < n; i++ {
-			res[(offs+i)] = buffer[i] 
+			res[(offs + i)] = buffer[i]
 		}
 		offs += len(buffer)
 	}
@@ -54,7 +55,39 @@ func (c LocalClient) Read(path string) ([]byte, error) {
 }
 
 func (c LocalClient) Write(src string, dst string) error {
-	fd, err := os.OpenFile(dst, os.O_CREATE|os.O_APPEND, os.ModeAppend)
+
+	_, err := os.Stat(c.root)
+	if err != nil {
+		if os.IsNotExist(err) {
+			if err := os.MkdirAll(c.root, os.ModePerm); err != nil {
+				return err
+			}
+		} else {
+			return err
+		}
+	}
+
+	fpf := fs.GetFullPath("", c.root, dst)
+	fpd := fs.Dir(fpf)
+	_, err = os.Stat(fpd)
+	if err != nil {
+		if os.IsNotExist(err) {
+			if err := os.MkdirAll(fpd, os.ModePerm); err != nil {
+				return err
+			}
+		} else {
+			return err
+		}
+	}
+
+	_, err = os.Stat(fpf)
+	if os.IsExist(err) {
+		if err := os.RemoveAll(fpf);err != nil {
+			return err
+		}
+	} 
+
+	fd, err := os.OpenFile(fpf, os.O_CREATE|os.O_WRONLY, os.ModePerm)
 	if err != nil {
 		return err
 	}
@@ -75,17 +108,17 @@ func (c LocalClient) Write(src string, dst string) error {
 		if err != nil {
 			if err == io.EOF {
 				break
-			} 
+			}
 			return err
 		}
 		if n > 0 {
 			if _, err := fd.Write(buf); err != nil {
-		 		return err
+				return err
 			}
 			continue
-		} 
-	}  
-	
+		}
+	}
+
 	return err
 }
 

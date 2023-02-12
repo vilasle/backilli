@@ -7,12 +7,12 @@ import (
 	"os"
 
 	smb2 "github.com/hirochachacha/go-smb2"
+	"github.com/vilamslep/backilli/pkg/fs"
 	"github.com/vilamslep/backilli/pkg/fs/unit"
 )
 
 type SmbClient struct {
 	mountPoint *smb2.Share
-	conn       net.Conn
 	session    *smb2.Session
 	root       string
 }
@@ -43,7 +43,6 @@ func NewClient(conf unit.ClientConfig) (*SmbClient, error) {
 
 	c := SmbClient{
 		mountPoint: share,
-		conn:       conn,
 		session:    s,
 		root:       conf.Root,
 	}
@@ -84,7 +83,22 @@ func (c SmbClient) Read(path string) ([]byte, error) {
 }
 
 func (c SmbClient) Write(src string, dst string) error {
-	wd, err := c.createFile(dst)
+
+	fpf := fs.GetFullPath(string(smb2.PathSeparator), c.root, dst)
+	fpd := fs.Dir(fpf)
+	
+	_, err := c.mountPoint.Stat(fpd)
+	if err != nil {
+		if os.IsNotExist(err) {
+			if err := c.mkdirAll(fpd); err != nil {
+				return err
+			}
+		}else {
+			return err
+		}
+	}
+
+	wd, err := c.createFile(fpf)
 	if err != nil {
 		return err
 	}
@@ -147,11 +161,7 @@ func (c SmbClient) Remove(path string) error {
 }
 
 func (c SmbClient) Close() error {
-	err := c.session.Logoff()
-	if err != nil {
-		return err
-	}
-	return c.conn.Close()
+	return c.session.Logoff()
 }
 
 func (c SmbClient) createFile(path string) (*unit.File, error) {

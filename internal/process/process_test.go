@@ -34,3 +34,27 @@ func TestInitProcess(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestRun(t *testing.T) {
+	if err := env.LoadEnvfile("test.env"); err != nil {
+		t.Fatal(err)
+	}
+
+	path := env.Get("CONFIG")
+
+	pc, err := NewProcessConfig(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ps, err := InitProcess(pc)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ps.Run()
+
+	if err := ps.Close(); err != nil {
+		t.Fatal(err)
+	}
+}
