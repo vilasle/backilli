@@ -21,7 +21,7 @@ func NewClient(conf unit.ClientConfig) LocalClient {
 }
 
 func (c LocalClient) Read(path string) ([]byte, error) {
-	fd, err := os.Open(path)
+	fd, err := os.OpenFile(path, os.O_RDWR, os.ModePerm)
 	if err != nil {
 		return nil, err
 	}

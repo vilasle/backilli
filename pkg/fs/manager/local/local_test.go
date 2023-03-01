@@ -6,8 +6,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/vilamslep/backilli/pkg/fs/unit"
 	env "github.com/vilamslep/backilli/pkg/fs/environment"
+	"github.com/vilamslep/backilli/pkg/fs/unit"
 )
 
 func TestWrite(t *testing.T) {
@@ -32,7 +32,11 @@ func TestWrite(t *testing.T) {
 	defer os.Remove(pathSrc)
 	defer os.Remove(path)
 
-	localClient := LocalClient{}
+	pwd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	localClient := LocalClient{root: pwd}
 
 	err = localClient.Write(pathSrc, path)
 	if err != nil {
@@ -62,7 +66,7 @@ func TestRead(t *testing.T) {
 	}
 	path := env.Get("PATH_SRC")
 
-	fd, err := os.OpenFile(path, os.O_CREATE|os.O_APPEND, os.ModeAppend)
+	fd, err := os.OpenFile(path, os.O_CREATE|os.O_APPEND|os.O_WRONLY, os.ModePerm)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -85,7 +89,12 @@ func TestRead(t *testing.T) {
 	}
 	fd.Close()
 
-	localClient := LocalClient{}
+	pwd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	localClient := LocalClient{root: pwd}
 
 	res, err := localClient.Read(path)
 	if err != nil {
@@ -142,7 +151,7 @@ func TestRemove(t *testing.T) {
 	}
 	path := env.Get("PATH_SRC")
 
-	fd, err := os.OpenFile(path, os.O_CREATE|os.O_APPEND, os.ModeAppend)
+	fd, err := os.OpenFile(path, os.O_CREATE|os.O_APPEND|os.O_WRONLY, os.ModeAppend)
 	if err != nil {
 		t.Fatal(err)
 	}
