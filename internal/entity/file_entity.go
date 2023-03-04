@@ -3,13 +3,11 @@ package entity
 import (
 	"io/ioutil"
 	"os"
-	"path/filepath"
 	"regexp"
-	"strings"
 	"time"
 
+	"github.com/vilamslep/backilli/internal/action/dump/file"
 	"github.com/vilamslep/backilli/internal/period"
-	"github.com/vilamslep/backilli/internal/tool"
 	"github.com/vilamslep/backilli/pkg/fs"
 	"github.com/vilamslep/backilli/pkg/fs/manager"
 	"github.com/vilamslep/backilli/pkg/fs/manager/local"
@@ -31,26 +29,11 @@ type FileEntity struct {
 	err        error
 }
 
-type FilesTree map[string]FilesTree
-
 func (e FileEntity) GetId() string {
 	return e.Id
 }
 
 func (e FileEntity) Backup(s EntitySetting, t time.Time) (err error) {
-	var tree FilesTree
-	var files []string
-
-	if tree, err = generateFilesTree(e.FilePath); err != nil {
-		return
-	}
-
-	if files, err = e.getFilesForBackuping(e.FilePath, tree); err != nil {
-		return
-	}
-
-	e.setEntitySize(files)
-
 	stat, err := os.Stat(e.FilePath)
 	if err != nil {
 		return err
@@ -61,91 +44,28 @@ func (e FileEntity) Backup(s EntitySetting, t time.Time) (err error) {
 		s.Tempdir = os.TempDir()
 	}
 	temp = fs.GetFullPath("", s.Tempdir, stat.Name())
-
-	cl := local.NewClient(unit.ClientConfig{Root: temp})
-
-	if _, err := os.Stat(s.Tempdir); err != nil {
-		if !os.IsNotExist(err) {
-			return err
-		}
-	} else {
-		if err := os.RemoveAll(s.Tempdir); err != nil {
-			return err
-		}
+	if err := checkTempDirectory(temp); err != nil {
+		return err
 	}
+
+	dump := file.NewDump(e.FilePath, temp, e.IncludeRegexp, e.ExcludeRegexp, e.Compress)
+
+	if err := dump.Dump(); err != nil {
+		return err
+	}
+
+	e.backupSize = dump.DestinationSize
+	e.entitySize = dump.SourceSize
 
 	if err := os.MkdirAll(temp, os.ModePerm); err != nil {
 		return err
 	}
 
-	for i := range files {
-		r := strings.Split(e.FilePath, string(filepath.Separator))
-		rf := strings.Split(files[i], string(filepath.Separator))
+	defer clearTempFile(temp, temp, dump.PathDestination)
 
-		d := fs.GetFullPath("", temp,
-			strings.Join(rf[len(r):len(rf)-1], string(filepath.Separator)))
+	e.moveBackupToDestination(t)
 
-		if _, err := os.Stat(d); err != nil {
-			if os.IsNotExist(err) {
-				if err := os.MkdirAll(d, os.ModePerm); err != nil {
-					return err
-				}
-			} else {
-				return err
-			}
-		}
-
-		ft := strings.Join(rf[len(r):], string(filepath.Separator))
-
-		if err := cl.Write(files[i], ft); err != nil {
-			return err
-		}
-	}
-
-	if e.NeedToCompress() {
-		e.backupFile = (temp + ".zip")
-		err := tool.Compress(temp, e.backupFile)
-		if err != nil {
-			return err
-		}
-	}
-
-	err = e.setBackupSize()
-	if err != nil {
-		return err
-	}
-
-	defer clearTempFile(temp, e.backupFile, cl)
-
-	for _, mgnr := range e.FileManagers {
-		stat, err := os.Stat(e.backupFile)
-		if err != nil {
-			return err
-		}
-		if err := mgnr.Write(e.backupFile, fs.GetFullPath("", e.Id, t.Format("2006-02-03"), stat.Name())); err != nil {
-			return err
-		}
-	}
 	return nil
-}
-
-func clearTempFile(fd string, arch string, cl local.LocalClient) error {
-	if fd != "" {
-		if err := cl.Remove(fd); err != nil {
-			return err
-		}
-	}
-
-	if arch != "" {
-		if err := cl.Remove(arch); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (e FileEntity) NeedToCompress() bool {
-	return e.Compress
 }
 
 func (e FileEntity) Err() error {
@@ -173,103 +93,46 @@ func (e FileEntity) CheckPeriodRules(now time.Time) bool {
 	return day || month
 }
 
-func generateFilesTree(path string) (FilesTree, error) {
-	ls, err := ioutil.ReadDir(path)
-	if err != nil {
-		return nil, err
-	}
-
-	tree := make(FilesTree)
-	for _, stat := range ls {
-		if stat.IsDir() {
-			np := fs.GetFullPath("", path, stat.Name())
-			t, err := generateFilesTree(np)
-			if err != nil {
-				return nil, err
-			}
-			tree[fs.GetFullPath("", path, stat.Name())] = t
-		} else {
-			tree[stat.Name()] = nil
-		}
-	}
-
-	return tree, nil
-}
-
-func (e FileEntity) getFilesForBackuping(path string, tree FilesTree) (files []string, err error) {
-	for k, v := range tree {
-		if v != nil {
-			fsl, err := e.getFilesForBackuping(k, v)
-			if err != nil {
-				return nil, err
-			}
-
-			for i := range fsl {
-				files = append(files, fsl[i])
-			}
-		} else {
-			if checkRegexp(e.ExcludeRegexp, k) {
-				continue
-			}
-
-			if checkRegexp(e.IncludeRegexp, k) || e.IncludeRegexp == nil {
-				files = append(files, fs.GetFullPath("", path, k))
-			}
-		}
-	}
-
-	return
-}
-
-func (e *FileEntity) setEntitySize(files []string) error {
-	for i := range files {
-		if stat, err := os.Stat(files[i]); err == nil {
-			e.entitySize += stat.Size()
-		}
-	}
-	return nil
-}
-
-func (e *FileEntity) setBackupSize() error {
-	stat, err := os.Stat(e.backupFile)
-	if err != nil {
-		return err
-	}
-	if stat.IsDir() {
-		size, err := getDirectorySize(e.backupFile)
+func (e *FileEntity) moveBackupToDestination(t time.Time) error {
+	for _, mgnr := range e.FileManagers {
+		stat, err := os.Stat(e.backupFile)
 		if err != nil {
 			return err
 		}
-		e.backupSize = size
-	} else {
-		e.backupSize = stat.Size()
+		if err := mgnr.Write(e.backupFile, fs.GetFullPath("", e.Id, t.Format("2006-02-03"), stat.Name())); err != nil {
+			return err
+		}
 	}
 	return nil
 }
 
-func getDirectorySize(path string) (int64, error) {
+func checkTempDirectory(path string) error {
 	ls, err := ioutil.ReadDir(path)
 	if err != nil {
-		return 0, err
-	}
-	var summarySize int64
-	for _, stat := range ls {
-		if stat.IsDir() {
-			size, err := getDirectorySize(fs.GetFullPath("", path, stat.Name()))
-			if err != nil {
-				return 0, err
-			}
-			summarySize += size
-		} else {
-			summarySize += stat.Size()
+		if os.IsNotExist(err) {
+			return os.MkdirAll(path, os.ModePerm)
 		}
 	}
-	return summarySize, nil
+
+	if len(ls) > 0 {
+		if err := os.RemoveAll(path); err != nil {
+			return err
+		}
+		return os.MkdirAll(path, os.ModePerm)
+	}
+
+	return err
 }
 
-func checkRegexp(exp *regexp.Regexp, path string) bool {
-	if exp != nil {
-		return exp.MatchString(path)
+func clearTempFile(wordDir string, paths ...string) error {
+	c := local.NewClient(unit.ClientConfig{Root: wordDir})
+	for i := range paths {
+		if paths[i] != "" {
+			err := c.Remove(paths[i])
+			if err != nil {
+				return err
+			}
+		}
 	}
-	return false
+	return nil
 }
