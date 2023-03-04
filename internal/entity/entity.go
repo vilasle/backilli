@@ -5,7 +5,6 @@ import "time"
 type Entity interface {
 	GetId() string
 	Backup(EntitySetting, time.Time) error
-	NeedToCompress() bool
 	CheckPeriodRules(time.Time) bool
 	Err() error
 	EntitySize() int64
