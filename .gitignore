@@ -9,3 +9,7 @@
 *.yaml
 *.cnf
 *.conf
+.vscode
+#docker images for testing
+images 
+

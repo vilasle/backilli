@@ -8,10 +8,12 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/vilamslep/backilli/internal/action/dump/postgresql"
+	pgdb "github.com/vilamslep/backilli/internal/database/postgresql"
 	"github.com/vilamslep/backilli/internal/entity"
 	"github.com/vilamslep/backilli/internal/period"
-	"github.com/vilamslep/backilli/internal/tool"
-	"github.com/vilamslep/backilli/internal/tool/postgresql"
+	"github.com/vilamslep/backilli/internal/tool/compress"
+	"github.com/vilamslep/backilli/pkg/fs/environment"
 	"github.com/vilamslep/backilli/pkg/fs/manager"
 	"github.com/vilamslep/backilli/pkg/fs/unit"
 )
@@ -60,38 +62,6 @@ func (pc *Process) Close() error {
 	return nil
 }
 
-func InitProcess(conf ProcessConfig) (*Process, error) {
-	process := Process{}
-
-	if err := conf.SetEnviroment(); err != nil {
-		return nil, err
-	}
-
-	postgresql.PGDumpPath = conf.PGDump()
-	postgresql.PsqlPath = conf.Psql()
-	tool.Compressing = conf.Compressing()
-
-	process.catalogs = conf.Catalogs
-	process.email = conf.Emails
-
-	cfgs, err := convertConfigForFSManagers(conf.Volumes)
-	if err != nil {
-		return nil, err
-	}
-
-	if ms, err := manager.InitManagersFromConfigs(cfgs); err == nil {
-		process.volumes = ms
-	} else {
-		return nil, err
-	}
-
-	if err := process.setEntityFromTask(conf.Tasks); err != nil {
-		return nil, err
-	}
-
-	return &process, nil
-}
-
 func (pc *Process) setEntityFromTask(tasks []Task) error {
 	for _, v := range tasks {
 		rule := period.PeriodRule{}
@@ -108,14 +78,33 @@ func (pc *Process) setEntityFromTask(tasks []Task) error {
 		}
 
 		if len(v.PgDatabases) > 0 {
-
+			pc.pgBackup(v, rule)
 		}
 	}
 	return nil
 }
 
-func (pc *Process) pgBackup(t Task) []entity.PostgresEntity {
-	return nil
+func (pc *Process) pgBackup(t Task, rule period.PeriodRule) {
+	for _, r := range t.PgDatabases {
+		e := entity.PostgresEntity{
+			Id:         t.Id,
+			Database:   r,
+			Compress:   t.Compress,
+			PeriodRule: rule,
+		}
+		e.ConnectionConfig = pgdb.ConnectionConfig{
+			User: environment.Get("PGUSER"),
+			Password: environment.Get("PGPASSWORD"),
+			SSlMode: false,			
+		}
+
+		for _, m := range t.Volumes {
+			if v, ok := pc.volumes[m]; ok {
+				e.FileManagers = append(e.FileManagers, v)
+			}
+		}
+		pc.entitys = append(pc.entitys, e)
+	}
 }
 
 func (pc *Process) filesBackup(t Task, rule period.PeriodRule) {
@@ -149,6 +138,38 @@ func (pc *Process) filesBackup(t Task, rule period.PeriodRule) {
 		}
 		pc.entitys = append(pc.entitys, e)
 	}
+}
+
+func InitProcess(conf ProcessConfig) (*Process, error) {
+	process := Process{}
+
+	if err := conf.SetEnviroment(); err != nil {
+		return nil, err
+	}
+
+	postgresql.PG_DUMP = conf.PGDump()
+	postgresql.PSQL = conf.Psql()
+	compress.Compressing = conf.Compressing()
+
+	process.catalogs = conf.Catalogs
+	process.email = conf.Emails
+
+	cfgs, err := convertConfigForFSManagers(conf.Volumes)
+	if err != nil {
+		return nil, err
+	}
+
+	if ms, err := manager.InitManagersFromConfigs(cfgs); err == nil {
+		process.volumes = ms
+	} else {
+		return nil, err
+	}
+
+	if err := process.setEntityFromTask(conf.Tasks); err != nil {
+		return nil, err
+	}
+
+	return &process, nil
 }
 
 func convertConfigForFSManagers(ms []VolumeConfig) ([]unit.ClientConfig, error) {

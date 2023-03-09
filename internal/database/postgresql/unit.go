@@ -7,11 +7,6 @@ import (
 
 var (
 	SysDatabase string = "postgres"
-	PsqlPath       string
-	LargeTablesTxt string
-	AllDatabasesTxt string
-	SearchDatabases string
-	PGDumpPath string
 )
 
 type Database struct {
@@ -36,8 +31,11 @@ func (c ConnectionConfig) String() string {
 	return fmt.Sprintf("user=%s password=%s dbname=%s sslmode=%s", c.User, c.Password, c.Name, mode)
 }
 
-func (conf ConnectionConfig)CreateConnection() (*sql.DB, error) {
-	db, err := sql.Open("postgres", conf.String())
+func (conf ConnectionConfig) CreateConnection() (*sql.DB, error) {
+	if conf.Database.Name == "" {
+		conf.Database.Name = SysDatabase
+	}
+	db, err := sql.Open(SysDatabase, conf.String())
 	if err != nil {
 		return nil, err
 	}

@@ -15,3 +15,7 @@ func GetFullPath(sep string, path... string) string {
 func Dir(path string) string {
 	return filepath.Dir(path)
 }
+
+func Base(path string) string {
+	return filepath.Base(path)
+}

@@ -1,6 +1,10 @@
 package entity
 
-import "time"
+import (
+	"time"
+
+	"github.com/vilamslep/backilli/pkg/fs/manager"
+)
 
 type Entity interface {
 	GetId() string
@@ -9,6 +13,8 @@ type Entity interface {
 	Err() error
 	EntitySize() int64
 	BackupSize() int64
+	GetBackupFilePath() string
+	GetFileManagers() []manager.ManagerAtomic
 }
 
 type EntitySetting struct {

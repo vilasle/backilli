@@ -1,17 +1,13 @@
 package entity
 
 import (
-	"io/ioutil"
 	"os"
 	"regexp"
 	"time"
 
 	"github.com/vilamslep/backilli/internal/action/dump/file"
 	"github.com/vilamslep/backilli/internal/period"
-	"github.com/vilamslep/backilli/pkg/fs"
 	"github.com/vilamslep/backilli/pkg/fs/manager"
-	"github.com/vilamslep/backilli/pkg/fs/manager/local"
-	"github.com/vilamslep/backilli/pkg/fs/unit"
 )
 
 type FileEntity struct {
@@ -39,12 +35,8 @@ func (e FileEntity) Backup(s EntitySetting, t time.Time) (err error) {
 		return err
 	}
 
-	var temp string
-	if s.Tempdir == "" {
-		s.Tempdir = os.TempDir()
-	}
-	temp = fs.GetFullPath("", s.Tempdir, stat.Name())
-	if err := checkTempDirectory(temp); err != nil {
+	temp, err := prepareTempPlace(s.Tempdir, stat.Name())
+	if err != nil {
 		return err
 	}
 
@@ -57,13 +49,9 @@ func (e FileEntity) Backup(s EntitySetting, t time.Time) (err error) {
 	e.backupSize = dump.DestinationSize
 	e.entitySize = dump.SourceSize
 
-	if err := os.MkdirAll(temp, os.ModePerm); err != nil {
-		return err
-	}
-
 	defer clearTempFile(temp, temp, dump.PathDestination)
 
-	e.moveBackupToDestination(t)
+	moveBackupToDestination(e, t)
 
 	return nil
 }
@@ -93,46 +81,10 @@ func (e FileEntity) CheckPeriodRules(now time.Time) bool {
 	return day || month
 }
 
-func (e *FileEntity) moveBackupToDestination(t time.Time) error {
-	for _, mgnr := range e.FileManagers {
-		stat, err := os.Stat(e.backupFile)
-		if err != nil {
-			return err
-		}
-		if err := mgnr.Write(e.backupFile, fs.GetFullPath("", e.Id, t.Format("2006-02-03"), stat.Name())); err != nil {
-			return err
-		}
-	}
-	return nil
+func (e FileEntity) GetBackupFilePath() string {
+	return e.backupFile
 }
 
-func checkTempDirectory(path string) error {
-	ls, err := ioutil.ReadDir(path)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return os.MkdirAll(path, os.ModePerm)
-		}
-	}
-
-	if len(ls) > 0 {
-		if err := os.RemoveAll(path); err != nil {
-			return err
-		}
-		return os.MkdirAll(path, os.ModePerm)
-	}
-
-	return err
-}
-
-func clearTempFile(wordDir string, paths ...string) error {
-	c := local.NewClient(unit.ClientConfig{Root: wordDir})
-	for i := range paths {
-		if paths[i] != "" {
-			err := c.Remove(paths[i])
-			if err != nil {
-				return err
-			}
-		}
-	}
-	return nil
+func (e FileEntity) GetFileManagers() []manager.ManagerAtomic {
+	return e.FileManagers
 }

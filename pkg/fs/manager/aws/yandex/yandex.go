@@ -11,11 +11,14 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/vilamslep/backilli/pkg/fs"
 	env "github.com/vilamslep/backilli/pkg/fs/environment"
 	"github.com/vilamslep/backilli/pkg/fs/unit"
 )
 
 var ErrLoadingConfiguration = fmt.Errorf("failed to load cloud configuration")
+
+var limit int64 = 536870912
 
 type YandexClient struct {
 	s3client   *s3.Client
@@ -72,13 +75,83 @@ func (c YandexClient) Read(path string) ([]byte, error) {
 }
 
 func (c YandexClient) Write(src string, dst string) error {
-	file, err := os.Open(src)
+	stat, err := os.Stat(src)
 	if err != nil {
 		return err
 	}
-	defer file.Close()
 
-	info, err := file.Stat()
+	if stat.Size()/limit > 0 {
+		return c.putSplitedFile(src, dst)
+	} else {
+		return c.putOnce(src, dst)
+	}
+}
+
+func (c YandexClient) putOnce(src string, dst string) error {
+	return c.put(src, dst)
+}
+
+func (c YandexClient) putSplitedFile(src string, dst string) error {
+	buf := make([]byte, limit)
+	fd, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer fd.Close()
+
+	stopped := false
+	for i := 1; !stopped; i++ {
+		stopped, err = c.writeAndPutPartOfFiles(fd, buf, i, dst)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (c YandexClient) writeAndPutPartOfFiles(fd *os.File, buf []byte, part int, dst string) (bool, error) {
+	if n, err := fd.Read(buf); err != nil {
+		if err == io.EOF {
+			return true, nil
+		} else {
+			return true, err
+		}
+	} else if n == 0 {
+		return true, nil
+	}
+	//write temp file
+	var err error
+
+	fp := fs.GetFullPath("", os.TempDir(), fmt.Sprintf("zip.%03d", part))
+	if fd, err = os.Create(fp); err == nil {
+		if _, err := fd.Write(buf); err != nil {
+			return true, err
+		} else if err := fd.Close(); err != nil {
+			return true, err
+		}
+	} else {
+		return true, err
+	}
+	//put file to bucket
+	if err := c.put(fp, fs.GetFullPath("", dst, fs.Base(fp))); err != nil {
+		return false, err
+	}
+	//delete temp file
+	if err := os.Remove(fp); err != nil {
+		return true, err
+	}
+	return false, err
+}
+
+func (c YandexClient) put(src string, dst string) error {
+	fd, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer fd.Close()
+
+	stat, err := fd.Stat()
 	if err != nil {
 		return err
 	}
@@ -89,21 +162,15 @@ func (c YandexClient) Write(src string, dst string) error {
 		cloudRoot = cloudRoot[:len(cloudRoot)-1]
 	}
 
-	s := []byte(dst)
-	for i := range s {
-		if s[i] == 0x5c {
-			s[i] = 0x2f
-		} 
-	}
-	ns := string(s)
+	s := bytes.ReplaceAll([]byte(dst), []byte{0x5c}, []byte{0x2f})
 
-	yapath := fmt.Sprintf("%s%s%s", cloudRoot, c.cloudSep, ns)
+	yapath := fmt.Sprintf("%s%s%s", cloudRoot, c.cloudSep, string(s))
 
 	object := &s3.PutObjectInput{
 		Bucket:        aws.String(c.bucketName),
 		Key:           aws.String(yapath),
-		Body:          file,
-		ContentLength: info.Size(),
+		Body:          fd,
+		ContentLength: stat.Size(),
 	}
 
 	if _, err = c.s3client.PutObject(context.Background(), object); err != nil {

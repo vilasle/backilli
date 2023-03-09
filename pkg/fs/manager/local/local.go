@@ -55,7 +55,6 @@ func (c LocalClient) Read(path string) ([]byte, error) {
 }
 
 func (c LocalClient) Write(src string, dst string) error {
-
 	_, err := os.Stat(c.root)
 	if err != nil {
 		if os.IsNotExist(err) {

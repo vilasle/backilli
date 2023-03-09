@@ -7,7 +7,6 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/vilamslep/backilli/internal/tool/compress"
 	"github.com/vilamslep/backilli/pkg/fs"
 	"github.com/vilamslep/backilli/pkg/fs/manager/local"
 	"github.com/vilamslep/backilli/pkg/fs/unit"
@@ -80,20 +79,19 @@ func (d Dump) Dump() error {
 	}
 
 	if d.Compress {
-		bck := (workDirectory + ".zip")
-		if err := compress.Compress(d.PathDestination, bck); err == nil {
-			tempFile := d.PathDestination
-			d.PathDestination = bck
-			if err := c.Remove(tempFile); err != nil {
-				return err
-			}
-		} else {
+		bck, err := fs.CompressDir(workDirectory, d.PathDestination)
+		if err != nil {
 			return err
 		}
+		d.PathDestination = bck
 	}
-	if err := d.setBackupSize(); err != nil {
+
+	size, err := fs.GetSize(d.PathDestination)
+	if err != nil {
 		return err
 	}
+	d.DestinationSize = size
+
 	return nil
 }
 
