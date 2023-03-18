@@ -1,7 +1,6 @@
 package process
 
 import (
-	"log"
 	"regexp"
 	"strconv"
 	"strings"
@@ -16,13 +15,13 @@ import (
 	"github.com/vilamslep/backilli/pkg/fs/environment"
 	"github.com/vilamslep/backilli/pkg/fs/manager"
 	"github.com/vilamslep/backilli/pkg/fs/unit"
+	"github.com/vilamslep/backilli/pkg/logger"
 )
 
 type Volume map[string]manager.ManagerAtomic
 
 type Process struct {
 	catalogs Catalogs
-	email    []Email
 	entitys  []entity.Entity
 	volumes  Volume
 }
@@ -31,18 +30,68 @@ func NewProcess() (*Process, error) {
 	return nil, nil
 }
 
+func InitProcess(conf ProcessConfig) (*Process, error) {
+	process := Process{}
+
+	logger.Debug("load enviroment vars")
+	{
+		if err := conf.SetEnviroment(); err != nil {
+			return nil, errors.Wrap(err, "could not set enviroment vars")
+		}
+	}
+
+	postgresql.PG_DUMP = conf.PGDump()
+	postgresql.PSQL = conf.Psql()
+	compress.Compressing = conf.Compressing()
+
+	process.catalogs = conf.Catalogs
+
+	logger.Debug("prepare config for initing volumes")
+	{
+		cfgs, err := convertConfigForFSManagers(conf.Volumes)
+		if err != nil {
+			return nil, err
+		}
+
+		logger.Debug("init volumes")
+		{
+			if ms, err := manager.InitManagersFromConfigs(cfgs); err == nil {
+				process.volumes = ms
+			} else {
+				return nil, errors.Wrap(err, "could not init volumes")
+			}
+		}
+	}
+
+	logger.Debug("init tasks")
+	{
+		if err := process.setEntityFromTask(conf.Tasks); err != nil {
+			return nil, errors.Wrap(err, "could not init tasks")
+		}
+	}
+
+	return &process, nil
+}
+
 func (ps *Process) Run() {
 	t := time.Now()
 	s := entity.EntitySetting{Tempdir: ps.catalogs.Transitory}
 	for _, ent := range ps.entitys {
-		if !ent.CheckPeriodRules(t) {
-			continue
+		logger.Info("checking period rules")
+		{
+			if !ent.CheckPeriodRules(t) {
+				continue
+			}
 		}
-		if ent.Backup(s, t); ent.Err() != nil {
-			log.Println(ent.Err())
-			continue
+		logger.Infof("run %v backup", ent)
+		{
+			if ent.Backup(s, t); ent.Err() != nil {
+				logger.Info("an error occurred during backup", ent.Err())
+				continue
+			}
 		}
 	}
+	//prepare json-report
 }
 
 func (pc *Process) Close() error {
@@ -74,7 +123,8 @@ func (pc *Process) setEntityFromTask(tasks []Task) error {
 		}
 
 		if len(v.Files) > 0 {
-			pc.filesBackup(v, rule)
+			err := pc.filesBackup(v, rule)
+			return err
 		}
 
 		if len(v.PgDatabases) > 0 {
@@ -86,16 +136,16 @@ func (pc *Process) setEntityFromTask(tasks []Task) error {
 
 func (pc *Process) pgBackup(t Task, rule period.PeriodRule) {
 	for _, r := range t.PgDatabases {
-		e := entity.PostgresEntity{
+		e := &entity.PostgresEntity{
 			Id:         t.Id,
 			Database:   r,
 			Compress:   t.Compress,
 			PeriodRule: rule,
 		}
 		e.ConnectionConfig = pgdb.ConnectionConfig{
-			User: environment.Get("PGUSER"),
+			User:     environment.Get("PGUSER"),
 			Password: environment.Get("PGPASSWORD"),
-			SSlMode: false,			
+			SSlMode:  false,
 		}
 
 		for _, m := range t.Volumes {
@@ -107,7 +157,7 @@ func (pc *Process) pgBackup(t Task, rule period.PeriodRule) {
 	}
 }
 
-func (pc *Process) filesBackup(t Task, rule period.PeriodRule) {
+func (pc *Process) filesBackup(t Task, rule period.PeriodRule) error {
 	for _, r := range t.Files {
 		e := entity.FileEntity{
 			Id:         t.Id,
@@ -119,7 +169,7 @@ func (pc *Process) filesBackup(t Task, rule period.PeriodRule) {
 			if re, err := regexp.Compile(r.IncludeRegexp); err == nil {
 				e.IncludeRegexp = re
 			} else {
-				//TODO log
+				return errors.Wrap(err, "could not init the included regexp")
 			}
 		}
 
@@ -127,49 +177,21 @@ func (pc *Process) filesBackup(t Task, rule period.PeriodRule) {
 			if re, err := regexp.Compile(r.ExcludeRegexp); err == nil {
 				e.ExcludeRegexp = re
 			} else {
-				//TODO log
+				return errors.Wrap(err, "could not init the excluded regexp")
 			}
 		}
 
 		for _, m := range t.Volumes {
 			if v, ok := pc.volumes[m]; ok {
 				e.FileManagers = append(e.FileManagers, v)
+			} else {
+				return errors.New("unknown volume name " + m)
 			}
 		}
-		pc.entitys = append(pc.entitys, e)
-	}
-}
-
-func InitProcess(conf ProcessConfig) (*Process, error) {
-	process := Process{}
-
-	if err := conf.SetEnviroment(); err != nil {
-		return nil, err
+		pc.entitys = append(pc.entitys, &e)
 	}
 
-	postgresql.PG_DUMP = conf.PGDump()
-	postgresql.PSQL = conf.Psql()
-	compress.Compressing = conf.Compressing()
-
-	process.catalogs = conf.Catalogs
-	process.email = conf.Emails
-
-	cfgs, err := convertConfigForFSManagers(conf.Volumes)
-	if err != nil {
-		return nil, err
-	}
-
-	if ms, err := manager.InitManagersFromConfigs(cfgs); err == nil {
-		process.volumes = ms
-	} else {
-		return nil, err
-	}
-
-	if err := process.setEntityFromTask(conf.Tasks); err != nil {
-		return nil, err
-	}
-
-	return &process, nil
+	return nil
 }
 
 func convertConfigForFSManagers(ms []VolumeConfig) ([]unit.ClientConfig, error) {
@@ -195,7 +217,7 @@ func convertConfigForFSManagers(ms []VolumeConfig) ([]unit.ClientConfig, error) 
 				if p, err := strconv.Atoi(socket[1]); err == nil {
 					c.Port = p
 				} else {
-					return nil, err
+					return nil, errors.Wrapf(err, "does not convert smb socket %s to expected type", v.Address)
 				}
 			}
 		}

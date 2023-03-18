@@ -98,7 +98,7 @@ func (c LocalClient) Write(src string, dst string) error {
 	}
 	defer rd.Close()
 
-	var bufferOffset int64 = 4096
+	var bufferOffset int64 = 1024 * 16
 
 	buf := make([]byte, bufferOffset)
 

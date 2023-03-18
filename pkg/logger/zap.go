@@ -50,7 +50,6 @@ func InitLogger(toStdout bool, fileName string) {
 	core := zapcore.NewCore(zapcore.NewJSONEncoder(encoder), syncWriter, zap.NewAtomicLevelAt(level))
 	logger := zap.New(core, zap.AddCaller(), zap.AddCallerSkip(1))
 	errorLogger = logger.Sugar()
-
 }
 
 func Debug(args ...interface{}) {
@@ -83,28 +82,4 @@ func Error(args ...interface{}) {
 
 func Errorf(template string, args ...interface{}) {
 	errorLogger.Errorf(template, args...)
-}
-
-func DPanic(args ...interface{}) {
-	errorLogger.DPanic(args...)
-}
-
-func DPanicf(template string, args ...interface{}) {
-	errorLogger.DPanicf(template, args...)
-}
-
-func Panic(args ...interface{}) {
-	errorLogger.Panic(args...)
-}
-
-func Panicf(template string, args ...interface{}) {
-	errorLogger.Panicf(template, args...)
-}
-
-func Fatal(args ...interface{}) {
-	errorLogger.Fatal(args...)
-}
-
-func Fatalf(template string, args ...interface{}) {
-	errorLogger.Fatalf(template, args...)
 }

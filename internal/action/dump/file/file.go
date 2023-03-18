@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/pkg/errors"
 	"github.com/vilamslep/backilli/pkg/fs"
 	"github.com/vilamslep/backilli/pkg/fs/manager/local"
 	"github.com/vilamslep/backilli/pkg/fs/unit"
@@ -64,35 +65,55 @@ func (d Dump) Dump() error {
 		if _, err := os.Stat(d); err != nil {
 			if os.IsNotExist(err) {
 				if err := os.MkdirAll(d, os.ModePerm); err != nil {
-					return err
+					return errors.Wrapf(err, "making dir '%s' failed", d)
 				}
 			} else {
-				return err
+				return errors.Wrapf(err, "does not get stat dir '%s'", d)
 			}
 		}
 
 		ft := strings.Join(rf[len(r):], string(filepath.Separator))
 
 		if err := c.Write(files[i], ft); err != nil {
-			return err
+			return errors.Wrapf(err, "does not write file '%s'", ft)
 		}
 	}
 
 	if d.Compress {
 		bck, err := fs.CompressDir(workDirectory, d.PathDestination)
 		if err != nil {
-			return err
+			return errors.Wrapf(err, "compressing failed")
 		}
 		d.PathDestination = bck
 	}
 
-	size, err := fs.GetSize(d.PathDestination)
+	ls, err := ioutil.ReadDir(filepath.Dir(d.PathDestination))
 	if err != nil {
 		return err
 	}
-	d.DestinationSize = size
 
-	return nil
+	fls := make([]string, 0)
+	for i := range ls {
+		f := ls[i]
+		if f.IsDir() {
+			continue
+		}
+
+		if strings.Contains(f.Name(), filepath.Base(d.PathDestination)) {
+			fls = append(fls, fs.GetFullPath("", filepath.Dir(d.PathDestination), f.Name()))
+		}
+	}
+	var size int64
+	for i := range fls {
+		f := fls[i]
+		s, err := fs.GetSize(f)
+		if err != nil {
+			return err
+		}
+		size += s
+	}
+	d.DestinationSize = size
+	return err
 }
 
 func (d Dump) getFilesForBackuping(path string, tree FilesTree) (files []string, err error) {

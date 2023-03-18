@@ -1,5 +1,12 @@
 package main
 
+// FIXME errors with smb. I think it is connected with netword quality, need to try to do write thought attemps and checking connection
+// TODO clean old copies, if keep was errors in process does not remove old copies
+// TODO create reports
+// TODO check errors in pg_dump logs
+// TODO save plan to restore
+// TODO need to create json configuration for each other task and each other day. With help this check existing copies and use this for restoring data
+// TODO check splited of filesE
 import (
 	"errors"
 	"os"
@@ -20,6 +27,9 @@ var (
 
 func main() {
 
+	var conf ps.ProcessConfig
+	var proc *ps.Process
+
 	setCliAgrs()
 
 	if showHelp {
@@ -30,41 +40,40 @@ func main() {
 	logger.InitLogger((loggerPath == ""), loggerPath)
 
 	if err := checkArgs(); err != nil {
-		logger.Fatal(err)
+		logger.Error(err)
+		os.Exit(1)
 	}
 
 	_, err := os.Stat(configPath)
 	if os.IsNotExist(err) {
-		logger.Fatal("config file is not exists", configPath)
+		logger.Errorf("config file '%s' is not exists", configPath)
+		os.Exit(2)
 	}
 
-	var (
-		conf ps.ProcessConfig
-		proc *ps.Process
-	)
-	logger.Info("init procces")
+	logger.Infof("init procces from %s", configPath)
 	{
 		conf, err = ps.NewProcessConfig(configPath)
 		if err != nil {
-			logger.Fatal("could not read config file", configPath, err)
+			logger.Error("could not read config file", err)
+			os.Exit(3)
 		}
 
 		logger.Debugf("config was read. Result = %v", conf)
 
 		proc, err = ps.InitProcess(conf)
 		if err != nil {
-			logger.Fatal("could not init process", err)
+			logger.Error("could not init process", err)
+			os.Exit(4)
 		}
 	}
-	logger.Info()
-
 	logger.Info("run process")
-	proc.Run()
-
-	if err := proc.Close(); err != nil {
-		logger.Fatal("could not finish process", err)
+	{
+		proc.Run()
+		if err := proc.Close(); err != nil {
+			logger.Error("could not finish process", err)
+			os.Exit(5)
+		}
 	}
-
 }
 
 func checkArgs() error {

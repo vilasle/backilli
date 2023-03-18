@@ -35,18 +35,6 @@ type VolumeConfig struct {
 	Region     string `yaml:"region"`
 }
 
-type Email struct {
-	Id          string   `yaml:"id"`
-	User        string   `yaml:"user"`
-	Password    string   `yaml:"password"`
-	FromName    string   `yaml:"fromName"`
-	SmtpAddress string   `yaml:"smtp"`
-	Recivers    []string `yaml:"recivers"`
-	Letter      struct {
-		Subject string `yaml:"subject"`
-	} `yaml:"letter"`
-}
-
 type Tool struct {
 	Postgresql struct {
 		Frontend string `yaml:"psql"`
@@ -77,9 +65,8 @@ type ProcessConfig struct {
 	Env           `yaml:"enviroments"`
 	Catalogs      `yaml:"catalogs"`
 	Volumes       []VolumeConfig `yaml:"volumes"`
-	Emails        []Email  `yaml:"email"`
-	ExternalTools Tool     `yaml:"external_tool"`
-	Tasks         []Task   `yaml:"tasks"`
+	ExternalTools Tool           `yaml:"external_tool"`
+	Tasks         []Task         `yaml:"tasks"`
 }
 
 func NewProcessConfig(path string) (ProcessConfig, error) {

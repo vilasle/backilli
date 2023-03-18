@@ -1,12 +1,17 @@
 package entity
 
 import (
+	"fmt"
+	"io/ioutil"
 	"os"
+	"path/filepath"
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/vilamslep/backilli/internal/action/dump/file"
 	"github.com/vilamslep/backilli/internal/period"
+	"github.com/vilamslep/backilli/pkg/fs"
 	"github.com/vilamslep/backilli/pkg/fs/manager"
 )
 
@@ -21,7 +26,7 @@ type FileEntity struct {
 	sourceSize int64
 	entitySize int64
 	backupSize int64
-	backupFile string
+	backupFiles []string
 	err        error
 }
 
@@ -29,31 +34,56 @@ func (e FileEntity) GetId() string {
 	return e.Id
 }
 
-func (e FileEntity) Backup(s EntitySetting, t time.Time) (err error) {
+func (e *FileEntity) Backup(s EntitySetting, t time.Time) {
 	stat, err := os.Stat(e.FilePath)
 	if err != nil {
-		return err
+		e.err = err
+		return
 	}
 
 	temp, err := prepareTempPlace(s.Tempdir, stat.Name())
 	if err != nil {
-		return err
+		e.err = err
+		return
 	}
 
 	dump := file.NewDump(e.FilePath, temp, e.IncludeRegexp, e.ExcludeRegexp, e.Compress)
-
 	if err := dump.Dump(); err != nil {
-		return err
+		e.err = err
+		return
 	}
 
 	e.backupSize = dump.DestinationSize
 	e.entitySize = dump.SourceSize
+	ls, err := ioutil.ReadDir(filepath.Dir(dump.PathDestination))
+	if err != nil {
+		e.err = err
+		return
+	}
+	files := make([]string, 0)
+	for i := range ls {
+		f := ls[i]
+		if f.IsDir() {
+			continue
+		}
+
+		if strings.Contains(f.Name(), filepath.Base(dump.PathDestination)){
+			files = append(files, fs.GetFullPath("", filepath.Dir(dump.PathDestination), f.Name()))
+		}
+	}
+	
+	if len(files) == 0 {
+		e.err = fmt.Errorf("not found files which match %s", dump.PathDestination)
+		return
+	}
+	e.backupFiles = files
+
+	defer clearTempFile(temp, temp)
+	defer clearTempFile(temp, files...)
 
 	defer clearTempFile(temp, temp, dump.PathDestination)
 
 	moveBackupToDestination(e, t)
-
-	return nil
 }
 
 func (e FileEntity) Err() error {
@@ -81,8 +111,8 @@ func (e FileEntity) CheckPeriodRules(now time.Time) bool {
 	return day || month
 }
 
-func (e FileEntity) GetBackupFilePath() string {
-	return e.backupFile
+func (e FileEntity) GetBackupFilePath() []string {
+	return e.backupFiles
 }
 
 func (e FileEntity) GetFileManagers() []manager.ManagerAtomic {

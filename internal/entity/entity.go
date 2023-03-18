@@ -8,12 +8,12 @@ import (
 
 type Entity interface {
 	GetId() string
-	Backup(EntitySetting, time.Time) error
+	Backup(EntitySetting, time.Time)
 	CheckPeriodRules(time.Time) bool
 	Err() error
 	EntitySize() int64
 	BackupSize() int64
-	GetBackupFilePath() string
+	GetBackupFilePath() []string
 	GetFileManagers() []manager.ManagerAtomic
 }
 

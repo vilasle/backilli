@@ -5,10 +5,8 @@ import (
 	"strings"
 
 	_ "github.com/lib/pq"
+	"github.com/pkg/errors"
 )
-
-type Postgresql struct {
-}
 
 func databasesTxt(filter []string) (string, []any) {
 	if len(filter) > 0 {
@@ -35,7 +33,7 @@ func largeTablesTxt() string {
 func Databases(conf ConnectionConfig, filter []string) ([]Database, error) {
 	db, err := conf.CreateConnection()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "creating connection failed, config connection = %v", conf)
 	}
 	defer db.Close()
 	txt, args := databasesTxt(filter)
@@ -50,7 +48,7 @@ func Databases(conf ConnectionConfig, filter []string) ([]Database, error) {
 
 	rows, err := db.Query(txt, args...)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "error txt= %s, args = %v", txt, args)
 	}
 	defer rows.Close()
 	dbs := []Database{}
@@ -69,12 +67,13 @@ func Databases(conf ConnectionConfig, filter []string) ([]Database, error) {
 func ExcludedTables(conf ConnectionConfig) ([]string, error) {
 	db, err := conf.CreateConnection()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "creating connection failed, config connection = %v", conf)
 	}
 	defer db.Close()
-	rows, err := db.Query(largeTablesTxt())
+	txt := largeTablesTxt()
+	rows, err := db.Query(txt)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "error query = %s", txt)
 	}
 	defer rows.Close()
 	tables := make([]string, 0, 0)
@@ -93,7 +92,7 @@ func ExcludedTables(conf ConnectionConfig) ([]string, error) {
 func DatabaseSize(conf ConnectionConfig) (int64, error) {
 	db, err := conf.CreateConnection()
 	if err != nil {
-		return 0, err
+		return 0, errors.Wrapf(err, "creating connection failed, config connection = %v", conf)
 	}
 	defer db.Close()
 	row := db.QueryRow("select pg_database_size($1)", conf.Database.Name)

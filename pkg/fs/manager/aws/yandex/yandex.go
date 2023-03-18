@@ -75,73 +75,49 @@ func (c YandexClient) Read(path string) ([]byte, error) {
 }
 
 func (c YandexClient) Write(src string, dst string) error {
-	stat, err := os.Stat(src)
+	_, err := os.Stat(src)
 	if err != nil {
 		return err
 	}
-
-	if stat.Size()/limit > 0 {
-		return c.putSplitedFile(src, dst)
-	} else {
-		return c.putOnce(src, dst)
-	}
-}
-
-func (c YandexClient) putOnce(src string, dst string) error {
 	return c.put(src, dst)
 }
 
-func (c YandexClient) putSplitedFile(src string, dst string) error {
+func (c YandexClient) writeAndPutPartOfFiles(fd *os.File, dst string) error {
 	buf := make([]byte, limit)
-	fd, err := os.Open(src)
-	if err != nil {
-		return err
-	}
-	defer fd.Close()
+	for part := 1; true; part++ {
+		if n, err := fd.Read(buf); err != nil {
+			if err == io.EOF {
+				return nil
+			} else {
+				return err
+			}
+		} else if n == 0 {
+			return nil
+		} else {
+			buf = buf[0:n]
+		}
+		// write temp file
+		fp := fs.GetFullPath("", os.TempDir(), fmt.Sprintf("zip.%03d", part))
+		if nfd, err := os.Create(fp); err == nil {
+			if _, err := nfd.Write(buf); err != nil {
+				return err
+			} else if err := nfd.Close(); err != nil {
+				return err
+			}
+		} else {
+			return err
+		}
 
-	stopped := false
-	for i := 1; !stopped; i++ {
-		stopped, err = c.writeAndPutPartOfFiles(fd, buf, i, dst)
-		if err != nil {
+		//put file to bucket
+		if err := c.put(fp, fs.GetFullPath("", dst, fs.Base(fp))); err != nil {
+			return err
+		}
+		//delete temp file
+		if err := os.Remove(fp); err != nil {
 			return err
 		}
 	}
-
 	return nil
-}
-
-func (c YandexClient) writeAndPutPartOfFiles(fd *os.File, buf []byte, part int, dst string) (bool, error) {
-	if n, err := fd.Read(buf); err != nil {
-		if err == io.EOF {
-			return true, nil
-		} else {
-			return true, err
-		}
-	} else if n == 0 {
-		return true, nil
-	}
-	//write temp file
-	var err error
-
-	fp := fs.GetFullPath("", os.TempDir(), fmt.Sprintf("zip.%03d", part))
-	if fd, err = os.Create(fp); err == nil {
-		if _, err := fd.Write(buf); err != nil {
-			return true, err
-		} else if err := fd.Close(); err != nil {
-			return true, err
-		}
-	} else {
-		return true, err
-	}
-	//put file to bucket
-	if err := c.put(fp, fs.GetFullPath("", dst, fs.Base(fp))); err != nil {
-		return false, err
-	}
-	//delete temp file
-	if err := os.Remove(fp); err != nil {
-		return true, err
-	}
-	return false, err
 }
 
 func (c YandexClient) put(src string, dst string) error {

@@ -2,11 +2,13 @@ package postgresql
 
 import (
 	"bytes"
+	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strconv"
+	"strings"
 
 	pgdb "github.com/vilamslep/backilli/internal/database/postgresql"
 	"github.com/vilamslep/backilli/pkg/fs"
@@ -96,10 +98,30 @@ func (d *Dump) Dump() (err error) {
 		}
 		d.PathDestination = bck
 	}
-
-	size, err := fs.GetSize(d.PathDestination)
+	ls, err := ioutil.ReadDir(filepath.Dir(d.PathDestination))
 	if err != nil {
 		return err
+	}
+
+	files := make([]string, 0)
+	for i := range ls {
+		f := ls[i]
+		if f.IsDir() {
+			continue
+		}
+
+		if strings.Contains(f.Name(), filepath.Base(d.PathDestination)) {
+			files = append(files, fs.GetFullPath("", filepath.Dir(d.PathDestination), f.Name()))
+		}
+	}
+	var size int64
+	for i := range files {
+		f := files[i]
+		s, err := fs.GetSize(f)
+		if err != nil {
+			return err
+		}
+		size += s
 	}
 	d.DestinationSize = size
 
