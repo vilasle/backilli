@@ -28,11 +28,11 @@ func getLoggerLevel(lvl string) zapcore.Level {
 	return zapcore.InfoLevel
 }
 
-func InitLogger(toStdout bool, fileName string) {
+func InitLogger(fileName string) {
 	level := getLoggerLevel("debug")
 
 	var syncWriter zapcore.WriteSyncer
-	if toStdout {
+	if fileName == "" {
 		syncWriter = zapcore.AddSync(os.Stdout)
 	} else {
 		syncWriter = zapcore.AddSync(&lumberjack.Logger{

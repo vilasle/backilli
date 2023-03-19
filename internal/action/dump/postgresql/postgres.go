@@ -1,7 +1,9 @@
 package postgresql
 
 import (
+	"bufio"
 	"bytes"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -70,8 +72,15 @@ func (d *Dump) Dump() (err error) {
 	cmd.Stdout = &d.stdout
 
 	if err := executing.ExecCommand(cmd); err != nil {
-		return err
+		if err != nil {
+			return fmt.Errorf(d.stderr.String(), err)
+		}
+
+		if err := d.checkLogs(); err != nil {
+			return err
+		}
 	}
+
 	if len(d.ExcludedTable) > 0 {
 		binarybc := fs.GetFullPath("", d.PathDestination, "binary")
 		if _, err := os.Stat(binarybc); os.IsNotExist(err) {
@@ -88,7 +97,6 @@ func (d *Dump) Dump() (err error) {
 				return err
 			}
 		}
-
 	}
 
 	if d.Compress {
@@ -128,6 +136,31 @@ func (d *Dump) Dump() (err error) {
 	return err
 }
 
+func (d *Dump) checkLogs() (error) {
+	fout := fmt.Sprintf("%s.log", d.Database)
+	out, err := os.Create(fout)
+	if err != nil {
+		return err
+	}
+
+	wrt := bufio.NewWriter(out)
+	if d.stderr.Len() > 0 {
+		wrt.Write(d.stderr.Bytes())
+	}
+	wrt.Flush()
+	if isErrors, err := d.findErrorInDumpLog(fout); err != nil {
+		return err
+	} else if isErrors {
+		out.Close()
+		return fmt.Errorf("dumping ended with errors. check dumping log %s", fout)
+	}
+	out.Close()
+	if err := os.Remove(fout); err != nil {
+		return err
+	}
+	return nil
+}
+
 func (d *Dump) setSourceSize() error {
 	if size, err := pgdb.DatabaseSize(d.ConnectionConfig); err == nil {
 		d.SourceSize = size
@@ -142,4 +175,22 @@ func excludingArgs(cmd *exec.Cmd, excludedTable []string) {
 		cmd.Args = append(cmd.Args, "--exclude-table-data")
 		cmd.Args = append(cmd.Args, i)
 	}
+}
+
+func (i *Dump) findErrorInDumpLog(logFile string) (bool, error) {
+	f, err := os.Open(logFile)
+	if err != nil {
+		return false, err
+	}
+	defer f.Close()
+	rd := bufio.NewScanner(f)
+	for rd.Scan() {
+		s := rd.Text()
+		for _, er := range []string{"pg_dump: ошибка:", "pg_dump: error:"} {
+			if strings.Contains(s, er) {
+				return true, nil
+			}
+		}
+	}
+	return false, nil
 }

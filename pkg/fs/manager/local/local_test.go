@@ -14,8 +14,8 @@ func TestWrite(t *testing.T) {
 	if err := env.LoadEnvfile("test.env"); err != nil {
 		t.Fatal(err)
 	}
-	path := env.Get("PATH_SRC")
-	pathSrc := env.Get("PATH_DST")
+	pathSrc := env.Get("PATH_SRC")
+	pathDst := env.Get("PATH_DST")
 
 	wd, err := os.OpenFile(pathSrc, os.O_CREATE|os.O_WRONLY, os.ModePerm)
 	if err != nil {
@@ -30,7 +30,7 @@ func TestWrite(t *testing.T) {
 	}
 	wd.Close()
 	defer os.Remove(pathSrc)
-	defer os.Remove(path)
+	defer os.Remove(pathDst)
 
 	pwd, err := os.Getwd()
 	if err != nil {
@@ -38,12 +38,12 @@ func TestWrite(t *testing.T) {
 	}
 	localClient := LocalClient{root: pwd}
 
-	err = localClient.Write(pathSrc, path)
+	err = localClient.Write(pathSrc, pathDst)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	cnt, err := ioutil.ReadFile(path)
+	cnt, err := ioutil.ReadFile(pathDst)
 	if err != nil {
 		t.Fatal(err)
 	}

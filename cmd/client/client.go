@@ -3,15 +3,15 @@ package main
 // FIXME errors with smb. I think it is connected with netword quality, need to try to do write thought attemps and checking connection
 // TODO clean old copies, if keep was errors in process does not remove old copies
 // TODO create reports
-// TODO check errors in pg_dump logs
 // TODO save plan to restore
 // TODO need to create json configuration for each other task and each other day. With help this check existing copies and use this for restoring data
-// TODO check splited of filesE
+
 import (
 	"errors"
 	"os"
 
 	"github.com/spf13/pflag"
+	cfg "github.com/vilamslep/backilli/internal/config"
 	ps "github.com/vilamslep/backilli/internal/process"
 	"github.com/vilamslep/backilli/pkg/logger"
 )
@@ -27,7 +27,7 @@ var (
 
 func main() {
 
-	var conf ps.ProcessConfig
+	var conf cfg.ProcessConfig
 	var proc *ps.Process
 
 	setCliAgrs()
@@ -37,7 +37,7 @@ func main() {
 		return
 	}
 
-	logger.InitLogger((loggerPath == ""), loggerPath)
+	logger.InitLogger(loggerPath)
 
 	if err := checkArgs(); err != nil {
 		logger.Error(err)
@@ -52,7 +52,7 @@ func main() {
 
 	logger.Infof("init procces from %s", configPath)
 	{
-		conf, err = ps.NewProcessConfig(configPath)
+		conf, err = cfg.NewProcessConfig(configPath)
 		if err != nil {
 			logger.Error("could not read config file", err)
 			os.Exit(3)

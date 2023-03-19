@@ -81,10 +81,10 @@ func (c LocalClient) Write(src string, dst string) error {
 
 	_, err = os.Stat(fpf)
 	if os.IsExist(err) {
-		if err := os.RemoveAll(fpf);err != nil {
+		if err := os.RemoveAll(fpf); err != nil {
 			return err
 		}
-	} 
+	}
 
 	fd, err := os.OpenFile(fpf, os.O_CREATE|os.O_WRONLY, os.ModePerm)
 	if err != nil {
@@ -110,14 +110,12 @@ func (c LocalClient) Write(src string, dst string) error {
 			}
 			return err
 		}
-		if n > 0 {
-			if _, err := fd.Write(buf); err != nil {
-				return err
-			}
-			continue
+		buf := buf[0:n]
+		if _, err := fd.Write(buf); err != nil {
+			return err
 		}
-	}
 
+	}
 	return err
 }
 

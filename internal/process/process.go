@@ -1,18 +1,16 @@
 package process
 
 import (
-	"regexp"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/pkg/errors"
 	"github.com/vilamslep/backilli/internal/action/dump/postgresql"
-	pgdb "github.com/vilamslep/backilli/internal/database/postgresql"
+	cfg "github.com/vilamslep/backilli/internal/config"
 	"github.com/vilamslep/backilli/internal/entity"
 	"github.com/vilamslep/backilli/internal/period"
 	"github.com/vilamslep/backilli/internal/tool/compress"
-	"github.com/vilamslep/backilli/pkg/fs/environment"
 	"github.com/vilamslep/backilli/pkg/fs/manager"
 	"github.com/vilamslep/backilli/pkg/fs/unit"
 	"github.com/vilamslep/backilli/pkg/logger"
@@ -21,7 +19,7 @@ import (
 type Volume map[string]manager.ManagerAtomic
 
 type Process struct {
-	catalogs Catalogs
+	catalogs cfg.Catalogs
 	entitys  []entity.Entity
 	volumes  Volume
 }
@@ -30,7 +28,7 @@ func NewProcess() (*Process, error) {
 	return nil, nil
 }
 
-func InitProcess(conf ProcessConfig) (*Process, error) {
+func InitProcess(conf cfg.ProcessConfig) (*Process, error) {
 	process := Process{}
 
 	logger.Debug("load enviroment vars")
@@ -111,7 +109,7 @@ func (pc *Process) Close() error {
 	return nil
 }
 
-func (pc *Process) setEntityFromTask(tasks []Task) error {
+func (pc *Process) setEntityFromTask(tasks []cfg.Task) error {
 	for _, v := range tasks {
 		rule := period.PeriodRule{}
 		if v.Type == period.DAILY {
@@ -121,80 +119,24 @@ func (pc *Process) setEntityFromTask(tasks []Task) error {
 		} else {
 			return errors.New("unexpected type of period")
 		}
-
-		if len(v.Files) > 0 {
-			err := pc.filesBackup(v, rule)
-			return err
+		volumes := make([]manager.ManagerAtomic, 0)
+		for _, m := range v.Volumes {
+			if v, ok := pc.volumes[m]; ok {
+				volumes = append(volumes, v)
+			}
 		}
 
-		if len(v.PgDatabases) > 0 {
-			pc.pgBackup(v, rule)
+		cs := cfg.CreateBuilderConfigFromTask(v, volumes, rule)
+		es, err := entity.CreateAllEntitys(cs)
+		if err != nil {
+			return errors.Wrapf(err, "could not create backup entity from config %v", cs)
 		}
+		pc.entitys = append(pc.entitys, es...)
 	}
 	return nil
 }
 
-func (pc *Process) pgBackup(t Task, rule period.PeriodRule) {
-	for _, r := range t.PgDatabases {
-		e := &entity.PostgresEntity{
-			Id:         t.Id,
-			Database:   r,
-			Compress:   t.Compress,
-			PeriodRule: rule,
-		}
-		e.ConnectionConfig = pgdb.ConnectionConfig{
-			User:     environment.Get("PGUSER"),
-			Password: environment.Get("PGPASSWORD"),
-			SSlMode:  false,
-		}
-
-		for _, m := range t.Volumes {
-			if v, ok := pc.volumes[m]; ok {
-				e.FileManagers = append(e.FileManagers, v)
-			}
-		}
-		pc.entitys = append(pc.entitys, e)
-	}
-}
-
-func (pc *Process) filesBackup(t Task, rule period.PeriodRule) error {
-	for _, r := range t.Files {
-		e := entity.FileEntity{
-			Id:         t.Id,
-			FilePath:   r.Path,
-			Compress:   t.Compress,
-			PeriodRule: rule,
-		}
-		if len(r.IncludeRegexp) > 0 {
-			if re, err := regexp.Compile(r.IncludeRegexp); err == nil {
-				e.IncludeRegexp = re
-			} else {
-				return errors.Wrap(err, "could not init the included regexp")
-			}
-		}
-
-		if len(r.ExcludeRegexp) > 0 {
-			if re, err := regexp.Compile(r.ExcludeRegexp); err == nil {
-				e.ExcludeRegexp = re
-			} else {
-				return errors.Wrap(err, "could not init the excluded regexp")
-			}
-		}
-
-		for _, m := range t.Volumes {
-			if v, ok := pc.volumes[m]; ok {
-				e.FileManagers = append(e.FileManagers, v)
-			} else {
-				return errors.New("unknown volume name " + m)
-			}
-		}
-		pc.entitys = append(pc.entitys, &e)
-	}
-
-	return nil
-}
-
-func convertConfigForFSManagers(ms []VolumeConfig) ([]unit.ClientConfig, error) {
+func convertConfigForFSManagers(ms []cfg.VolumeConfig) ([]unit.ClientConfig, error) {
 	res := make([]unit.ClientConfig, 0, len(ms))
 	for _, v := range ms {
 		c := unit.ClientConfig{}
@@ -208,7 +150,7 @@ func convertConfigForFSManagers(ms []VolumeConfig) ([]unit.ClientConfig, error) 
 		c.KeyId = v.KeyId
 		c.KeySecret = v.KeySecret
 		c.Region = v.Region
-		if v.Type == SMBVolume {
+		if v.Type == cfg.SMBVolume {
 			socket := strings.Split(v.Address, ":")
 			c.Host = socket[0]
 			if len(socket) != 2 {
@@ -223,11 +165,11 @@ func convertConfigForFSManagers(ms []VolumeConfig) ([]unit.ClientConfig, error) 
 		}
 
 		switch v.Type {
-		case LocalVolume:
+		case cfg.LocalVolume:
 			c.Type = manager.LOCAL
-		case SMBVolume:
+		case cfg.SMBVolume:
 			c.Type = manager.SMB
-		case YandexStorageVolume:
+		case cfg.YandexStorageVolume:
 			c.Type = manager.YANDEX
 		default:
 			return nil, errors.New("unexpected type of volume")

@@ -17,13 +17,13 @@ func prepareTempPlace(tempdir string, name string) (t string, err error) {
 		tempdir = os.TempDir()
 	}
 	t = fs.GetFullPath("", tempdir, name)
-	if err = checkTempDirectory(t); err != nil {
+	if err = checkTemp(t); err != nil {
 		return t, err
 	}
 	return t, err
 }
 
-func checkTempDirectory(path string) error {
+func checkTemp(path string) error {
 	ls, err := ioutil.ReadDir(path)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -54,24 +54,23 @@ func clearTempFile(wordDir string, paths ...string) error {
 	return nil
 }
 
-func moveBackupToDestination(e Entity, t time.Time) error {
+func moveBackupToDestination(e EntityInfo, t time.Time) error {
 	arErr := make([]error, 0)
 
-	paths := e.GetBackupFilePath()
+	paths := e.BackupFilePath()
 	for i := range paths {
 		backpath := paths[i]
 		if _, err := os.Stat(backpath); err != nil {
 			return err
 		}
 		name := filepath.Base(backpath)
-		for _, mgnr := range e.GetFileManagers() {
+		for _, mgnr := range e.FileManagers() {
 
-			if err := mgnr.Write(backpath, fs.GetFullPath("", e.GetId(), t.Format("02-01-2006"), name)); err != nil {
+			if err := mgnr.Write(backpath, fs.GetFullPath("", e.Id(), t.Format("02-01-2006"), name)); err != nil {
 				arErr = append(arErr, err)
 			}
 		}
 	}
-
 	if len(arErr) > 0 {
 		return errors.Join(arErr...)
 	} else {
