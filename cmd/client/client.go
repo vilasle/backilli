@@ -104,7 +104,10 @@ func setCliAgrs() {
 		"Print help message")
 	pflag.StringVarP(&configPath, "config", "c",
 		"",
-		"Confif file with setting of client. This supports YML file only")
+		"Config file with setting of client. This supports YML file only")
+	pflag.StringVarP(&loggerPath, "log", "l",
+		"",
+		"Path to log file. If is not filled then log will write to stdout")
 	pflag.Parse()
 }
 
