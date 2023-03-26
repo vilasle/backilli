@@ -19,8 +19,9 @@ import (
 type Volume map[string]manager.ManagerAtomic
 
 type Process struct {
+	t        time.Time
 	catalogs cfg.Catalogs
-	entitys  []entity.Entity
+	entityes []entity.Entity
 	volumes  Volume
 }
 
@@ -71,25 +72,37 @@ func InitProcess(conf cfg.ProcessConfig) (*Process, error) {
 	return &process, nil
 }
 
+func (p *Process) Stat() *ProcessStat {
+	stat := &ProcessStat{
+		ps:       p,
+		Date:     p.t,
+		entityes: p.entityes,
+	}
+	return stat
+}
+
 func (ps *Process) Run() {
 	t := time.Now()
+	ps.t = t
 	s := entity.EntitySetting{Tempdir: ps.catalogs.Transitory}
-	for _, ent := range ps.entitys {
+	for _, ent := range ps.entityes {
 		logger.Info("checking period rules")
 		{
 			if !ent.CheckPeriodRules(t) {
 				continue
 			}
 		}
+
 		logger.Infof("run %v backup", ent)
 		{
 			if ent.Backup(s, t); ent.Err() != nil {
 				logger.Info("an error occurred during backup", ent.Err())
 				continue
+			} else {
+				logger.Infof("entity was finished success %v", ent)
 			}
 		}
 	}
-	//prepare json-report
 }
 
 func (pc *Process) Close() error {
@@ -131,7 +144,7 @@ func (pc *Process) setEntityFromTask(tasks []cfg.Task) error {
 		if err != nil {
 			return errors.Wrapf(err, "could not create backup entity from config %v", cs)
 		}
-		pc.entitys = append(pc.entitys, es...)
+		pc.entityes = append(pc.entityes, es...)
 	}
 	return nil
 }

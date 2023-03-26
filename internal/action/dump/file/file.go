@@ -36,7 +36,7 @@ func NewDump(src string, dst string, inclRegx *regexp.Regexp, exclRegx *regexp.R
 	return dump
 }
 
-func (d Dump) Dump() error {
+func (d *Dump) Dump() error {
 	var tree FilesTree
 	var err error
 	var files []string
@@ -51,7 +51,17 @@ func (d Dump) Dump() error {
 
 	d.setEntitySize(files)
 
-	workDirectory := filepath.Dir(d.PathDestination)
+	stat, err := os.Stat(d.PathDestination)
+	if err != nil {
+		return err
+	}
+
+	var workDirectory string
+	if stat.IsDir() {
+		workDirectory = d.PathDestination
+	} else {
+		workDirectory = filepath.Dir(d.PathDestination)
+	}
 
 	c := local.NewClient(unit.ClientConfig{Root: workDirectory})
 
@@ -74,7 +84,7 @@ func (d Dump) Dump() error {
 
 		ft := strings.Join(rf[len(r):], string(filepath.Separator))
 
-		if err := c.Write(files[i], ft); err != nil {
+		if _, err := c.Write(files[i], ft); err != nil {
 			return errors.Wrapf(err, "does not write file '%s'", ft)
 		}
 	}

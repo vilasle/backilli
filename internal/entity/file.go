@@ -26,14 +26,18 @@ type fileEntity struct {
 	pr       period.PeriodRule
 	srcsize  int64
 	dstsize  int64
-	bckfls    []string
+	bckfls   []string
+	st       time.Time
+	et       time.Time
+	status   string
+	bckpaths []string
 	err      error
 }
 
 func newFileEntity(conf BuilderConfig) (*fileEntity, error) {
 	e := &fileEntity{
 		id:       conf.Id,
-		srcfl: conf.FilePath,
+		srcfl:    conf.FilePath,
 		compress: conf.Compress,
 		pr:       conf.PeriodRule,
 	}
@@ -63,6 +67,15 @@ func (e fileEntity) Id() string {
 }
 
 func (e *fileEntity) Backup(s EntitySetting, t time.Time) {
+	e.st = time.Now()
+	defer func() {
+		e.et = time.Now()
+		e.status = "success"
+		if e.err != nil {
+			e.status = "error"
+		}
+	}()
+
 	stat, err := os.Stat(e.srcfl)
 	if err != nil {
 		e.err = err
@@ -88,6 +101,7 @@ func (e *fileEntity) Backup(s EntitySetting, t time.Time) {
 		e.err = err
 		return
 	}
+	// TODO do refactor this
 	files := make([]string, 0)
 	for i := range ls {
 		f := ls[i]
@@ -104,6 +118,7 @@ func (e *fileEntity) Backup(s EntitySetting, t time.Time) {
 		e.err = fmt.Errorf("not found files which match %s", dump.PathDestination)
 		return
 	}
+	//
 	e.bckfls = files
 
 	defer clearTempFile(temp, temp)
@@ -111,7 +126,10 @@ func (e *fileEntity) Backup(s EntitySetting, t time.Time) {
 
 	defer clearTempFile(temp, temp, dump.PathDestination)
 
-	moveBackupToDestination(e, t)
+	if e.bckpaths, err = moveBackupToDestination(e, t); err != nil {
+		e.err = err
+	}
+
 }
 
 func (e fileEntity) Err() error {
@@ -145,4 +163,24 @@ func (e fileEntity) BackupFilePath() []string {
 
 func (e fileEntity) FileManagers() []manager.ManagerAtomic {
 	return e.fsmngr
+}
+
+func (e fileEntity) StartTime() time.Time {
+	return e.st
+}
+
+func (e fileEntity) EndTime() time.Time {
+	return e.et
+}
+
+func (e fileEntity) OID() string {
+	return filepath.Base(e.srcfl)
+}
+
+func (e fileEntity) Status() string {
+	return e.status
+}
+
+func (e fileEntity) BackupPaths() []string {
+	return e.bckpaths
 }

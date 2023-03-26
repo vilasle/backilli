@@ -17,7 +17,7 @@ const (
 
 type ManagerAtomic interface {
 	Read(string) ([]byte, error)
-	Write(string, string) error
+	Write(string, string) (string, error)
 	Ls(string) ([]unit.File, error)
 	Remove(string) error
 	Close() error

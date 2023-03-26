@@ -24,6 +24,12 @@ type EntityInfo interface{
 	BackupSize() int64
 	BackupFilePath() []string
 	FileManagers() []manager.ManagerAtomic
+	OID() string
+	Status() string
+	StartTime() time.Time
+	EndTime() time.Time
+	BackupPaths() []string
+	Err() error		
 }
 
 func CreateAllEntitys(confs []BuilderConfig) ([]Entity, error) {

@@ -7,12 +7,16 @@ package main
 // TODO need to create json configuration for each other task and each other day. With help this check existing copies and use this for restoring data
 
 import (
+	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
+	"time"
 
 	"github.com/spf13/pflag"
 	cfg "github.com/vilamslep/backilli/internal/config"
 	ps "github.com/vilamslep/backilli/internal/process"
+	"github.com/vilamslep/backilli/internal/report"
 	"github.com/vilamslep/backilli/pkg/logger"
 )
 
@@ -49,7 +53,7 @@ func main() {
 		logger.Errorf("config file '%s' is not exists", configPath)
 		os.Exit(2)
 	}
-
+	t := time.Now()
 	logger.Infof("init procces from %s", configPath)
 	{
 		conf, err = cfg.NewProcessConfig(configPath)
@@ -72,6 +76,19 @@ func main() {
 		if err := proc.Close(); err != nil {
 			logger.Error("could not finish process", err)
 			os.Exit(5)
+		}
+		
+		r := report.InitReports(proc)
+		if content, err := json.Marshal(r); err != nil {
+			logger.Error(err)
+		} else {
+			fd, err := os.Create(fmt.Sprintf("report_%s.json", t.Format("02-01-2006")))
+			if err != nil {
+				logger.Error(err)
+			}
+			if _, err := fd.Write(content); err != nil {
+				logger.Error(err)
+			}
 		}
 	}
 }

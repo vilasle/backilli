@@ -38,7 +38,7 @@ func TestWrite(t *testing.T) {
 	}
 	localClient := LocalClient{root: pwd}
 
-	err = localClient.Write(pathSrc, pathDst)
+	_, err = localClient.Write(pathSrc, pathDst)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -82,8 +82,7 @@ func (c SmbClient) Read(path string) ([]byte, error) {
 	return res, nil
 }
 
-func (c SmbClient) Write(src string, dst string) error {
-
+func (c SmbClient) Write(src string, dst string) (string, error) {
 	fpf := fs.GetFullPath(string(smb2.PathSeparator), c.root, dst)
 	fpd := fs.Dir(fpf)
 	
@@ -91,22 +90,22 @@ func (c SmbClient) Write(src string, dst string) error {
 	if err != nil {
 		if os.IsNotExist(err) {
 			if err := c.mkdirAll(fpd); err != nil {
-				return err
+				return "", err
 			}
 		}else {
-			return err
+			return "", err
 		}
 	}
 
 	wd, err := c.createFile(fpf)
 	if err != nil {
-		return err
+		return "", err
 	}
 	defer wd.Close()
 
 	rd, err := os.OpenFile(src, os.O_RDONLY, os.ModePerm)
 	if err != nil {
-		return err
+		return "", err
 	}
 	defer rd.Close()
 
@@ -119,18 +118,18 @@ func (c SmbClient) Write(src string, dst string) error {
 			if err == io.EOF {
 				break
 			}
-			return err
+			return "", err
 		}
 
 		if n > 0 {
 			if _, err := wd.Write(buf); err != nil {
-				return err
+				return "", err
 			}
 			continue
 		}
 		break
 	}
-	return err
+	return fpf, err
 }
 
 func (c SmbClient) Ls(path string) ([]unit.File, error) {

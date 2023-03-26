@@ -16,33 +16,37 @@ import (
 )
 
 type postgresEntity struct {
-	id         string
-	database   string
-	compress   bool
-	fsmanagers []manager.ManagerAtomic
-	period period.PeriodRule
-	cnfconn pgdb.ConnectionConfig
+	id          string
+	database    string
+	compress    bool
+	fsmngr  []manager.ManagerAtomic
+	period      period.PeriodRule
+	cnfconn     pgdb.ConnectionConfig
 	backupPath  string
 	sourceSize  int64
 	entitySize  int64
 	backupSize  int64
 	backupFiles []string
+	st          time.Time
+	et          time.Time
+	bckpath     []string
+	status      string
 	err         error
 }
 
 func newPsqlEntity(conf BuilderConfig) (*postgresEntity, error) {
 	e := postgresEntity{
-		id:         conf.Id,
-		database:   conf.Database,
-		compress:   conf.Compress,
-		period: conf.PeriodRule,
+		id:       conf.Id,
+		database: conf.Database,
+		compress: conf.Compress,
+		period:   conf.PeriodRule,
 	}
 	e.cnfconn = pgdb.ConnectionConfig{
 		User:     environment.Get("PGUSER"),
 		Password: environment.Get("PGPASSWORD"),
 		SSlMode:  false,
 	}
-
+	e.fsmngr = conf.FsManagers 
 	return &e, nil
 }
 
@@ -51,6 +55,15 @@ func (e postgresEntity) Id() string {
 }
 
 func (e *postgresEntity) Backup(s EntitySetting, t time.Time) {
+	e.st = time.Now()
+	defer func() {
+		e.et = time.Now()
+		e.status = "success"
+		if e.err != nil {
+			e.status = "errror"
+		}
+	}()
+
 	temp, err := prepareTempPlace(s.Tempdir, e.database)
 	if err != nil {
 		e.err = err
@@ -108,7 +121,7 @@ func (e *postgresEntity) Backup(s EntitySetting, t time.Time) {
 
 	defer clearTempFile(temp, temp)
 	defer clearTempFile(temp, files...)
-	if err := moveBackupToDestination(e, t); err != nil {
+	if e.bckpath, err = moveBackupToDestination(e, t); err != nil {
 		e.err = err
 		return
 	}
@@ -143,5 +156,25 @@ func (e postgresEntity) BackupFilePath() []string {
 }
 
 func (e postgresEntity) FileManagers() []manager.ManagerAtomic {
-	return e.fsmanagers
+	return e.fsmngr
+}
+
+func (e postgresEntity) OID() string {
+	return e.database
+}
+
+func (e postgresEntity) StartTime() time.Time {
+	return e.st
+}
+
+func (e postgresEntity) EndTime() time.Time {
+	return e.et
+}
+
+func (e postgresEntity) Status() string {
+	return e.status
+}
+
+func (e postgresEntity) BackupPaths() []string {
+	return e.bckpath
 }

@@ -54,15 +54,15 @@ func (c LocalClient) Read(path string) ([]byte, error) {
 	return res, nil
 }
 
-func (c LocalClient) Write(src string, dst string) error {
+func (c LocalClient) Write(src string, dst string) (string, error) {
 	_, err := os.Stat(c.root)
 	if err != nil {
 		if os.IsNotExist(err) {
 			if err := os.MkdirAll(c.root, os.ModePerm); err != nil {
-				return err
+				return "", err
 			}
 		} else {
-			return err
+			return "", err
 		}
 	}
 
@@ -72,29 +72,29 @@ func (c LocalClient) Write(src string, dst string) error {
 	if err != nil {
 		if os.IsNotExist(err) {
 			if err := os.MkdirAll(fpd, os.ModePerm); err != nil {
-				return err
+				return "", err
 			}
 		} else {
-			return err
+			return "", err
 		}
 	}
 
 	_, err = os.Stat(fpf)
 	if os.IsExist(err) {
 		if err := os.RemoveAll(fpf); err != nil {
-			return err
+			return "", err
 		}
 	}
 
 	fd, err := os.OpenFile(fpf, os.O_CREATE|os.O_WRONLY, os.ModePerm)
 	if err != nil {
-		return err
+		return "", err
 	}
 	defer fd.Close()
 
 	rd, err := os.OpenFile(src, os.O_RDONLY, os.ModePerm)
 	if err != nil {
-		return err
+		return "", err
 	}
 	defer rd.Close()
 
@@ -108,15 +108,15 @@ func (c LocalClient) Write(src string, dst string) error {
 			if err == io.EOF {
 				break
 			}
-			return err
+			return "", err
 		}
 		buf := buf[0:n]
 		if _, err := fd.Write(buf); err != nil {
-			return err
+			return "", err
 		}
 
 	}
-	return err
+	return fpf, err
 }
 
 func (c LocalClient) Ls(path string) ([]unit.File, error) {

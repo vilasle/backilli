@@ -54,7 +54,7 @@ func TestWrite(t *testing.T) {
 	}
 	defer client.Close()
 
-	err = client.Write(pathSrc, path)
+	_, err = client.Write(pathSrc, path)
 	if err != nil {
 		t.Fatal(err)
 	}

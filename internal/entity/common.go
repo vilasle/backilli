@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/vilamslep/backilli/pkg/fs"
@@ -54,26 +55,29 @@ func clearTempFile(wordDir string, paths ...string) error {
 	return nil
 }
 
-func moveBackupToDestination(e EntityInfo, t time.Time) error {
+func moveBackupToDestination(e EntityInfo, t time.Time) ([]string, error) {
 	arErr := make([]error, 0)
+	arbck := make([]string, 0)
 
 	paths := e.BackupFilePath()
 	for i := range paths {
 		backpath := paths[i]
 		if _, err := os.Stat(backpath); err != nil {
-			return err
+			return nil, err
 		}
+		dir := strings.Split(filepath.Base(backpath), ".")[0]
 		name := filepath.Base(backpath)
 		for _, mgnr := range e.FileManagers() {
-
-			if err := mgnr.Write(backpath, fs.GetFullPath("", e.Id(), t.Format("02-01-2006"), name)); err != nil {
+			if path, err := mgnr.Write(backpath, fs.GetFullPath("", e.Id(), t.Format("02-01-2006"), dir , name)); err != nil {
 				arErr = append(arErr, err)
+			} else {
+				arbck = append(arbck, path)
 			}
 		}
 	}
 	if len(arErr) > 0 {
-		return errors.Join(arErr...)
+		return nil, errors.Join(arErr...)
 	} else {
-		return nil
+		return arbck, nil
 	}
 }

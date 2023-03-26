@@ -74,62 +74,24 @@ func (c YandexClient) Read(path string) ([]byte, error) {
 	return buffer.Bytes(), nil
 }
 
-func (c YandexClient) Write(src string, dst string) error {
+func (c YandexClient) Write(src string, dst string) (string, error) {
 	_, err := os.Stat(src)
 	if err != nil {
-		return err
+		return "", err
 	}
 	return c.put(src, dst)
 }
 
-func (c YandexClient) writeAndPutPartOfFiles(fd *os.File, dst string) error {
-	buf := make([]byte, limit)
-	for part := 1; true; part++ {
-		if n, err := fd.Read(buf); err != nil {
-			if err == io.EOF {
-				return nil
-			} else {
-				return err
-			}
-		} else if n == 0 {
-			return nil
-		} else {
-			buf = buf[0:n]
-		}
-		// write temp file
-		fp := fs.GetFullPath("", os.TempDir(), fmt.Sprintf("zip.%03d", part))
-		if nfd, err := os.Create(fp); err == nil {
-			if _, err := nfd.Write(buf); err != nil {
-				return err
-			} else if err := nfd.Close(); err != nil {
-				return err
-			}
-		} else {
-			return err
-		}
-
-		//put file to bucket
-		if err := c.put(fp, fs.GetFullPath("", dst, fs.Base(fp))); err != nil {
-			return err
-		}
-		//delete temp file
-		if err := os.Remove(fp); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (c YandexClient) put(src string, dst string) error {
+func (c YandexClient) put(src string, dst string) (string, error) {
 	fd, err := os.Open(src)
 	if err != nil {
-		return err
+		return "", err
 	}
 	defer fd.Close()
 
 	stat, err := fd.Stat()
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	cloudRoot := c.cloudRoot
@@ -141,7 +103,7 @@ func (c YandexClient) put(src string, dst string) error {
 	s := bytes.ReplaceAll([]byte(dst), []byte{0x5c}, []byte{0x2f})
 
 	yapath := fmt.Sprintf("%s%s%s", cloudRoot, c.cloudSep, string(s))
-
+	bckpath := fs.GetFullPath("/", c.bucketName, yapath) 
 	object := &s3.PutObjectInput{
 		Bucket:        aws.String(c.bucketName),
 		Key:           aws.String(yapath),
@@ -150,9 +112,9 @@ func (c YandexClient) put(src string, dst string) error {
 	}
 
 	if _, err = c.s3client.PutObject(context.Background(), object); err != nil {
-		return err
+		return "", err
 	} else {
-		return nil
+		return bckpath, nil
 	}
 }
 
