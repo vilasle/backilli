@@ -94,6 +94,8 @@ func (ps *Process) Run() {
 		{
 			if !ent.CheckPeriodRules(t) {
 				continue
+			} else {
+				logger.Infof("checking did not executed. task will be skip. %v", ent)
 			}
 		}
 
