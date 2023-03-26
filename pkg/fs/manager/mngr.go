@@ -15,6 +15,14 @@ const (
 	YANDEX = 3
 )
 
+type ManagerAtomic interface {
+	Read(string) ([]byte, error)
+	Write(string, string) (string, error)
+	Ls(string) ([]unit.File, error)
+	Remove(string) error
+	Close() error
+}
+
 func NewManager(conf unit.ClientConfig) (ManagerAtomic, error) {
 	switch conf.Type {
 	case LOCAL:

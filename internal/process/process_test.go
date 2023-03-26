@@ -3,7 +3,9 @@ package process
 import (
 	"testing"
 
+	cfg "github.com/vilamslep/backilli/internal/config"
 	env "github.com/vilamslep/backilli/pkg/fs/environment"
+	"github.com/vilamslep/backilli/pkg/logger"
 )
 
 func TestNewProcessConfig(t *testing.T) {
@@ -13,7 +15,7 @@ func TestNewProcessConfig(t *testing.T) {
 
 	path := env.Get("CONFIG")
 
-	if _, err := NewProcessConfig(path); err != nil {
+	if _, err := cfg.NewProcessConfig(path); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -22,39 +24,15 @@ func TestInitProcess(t *testing.T) {
 	if err := env.LoadEnvfile("test.env"); err != nil {
 		t.Fatal(err)
 	}
-
+	logger.InitLogger("")
 	path := env.Get("CONFIG")
 
-	pc, err := NewProcessConfig(path)
+	conf, err := cfg.NewProcessConfig(path)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if _, err := InitProcess(pc); err != nil {
-		t.Fatal(err)
-	}
-}
-
-func TestRun(t *testing.T) {
-	if err := env.LoadEnvfile("test.env"); err != nil {
-		t.Fatal(err)
-	}
-
-	path := env.Get("CONFIG")
-
-	pc, err := NewProcessConfig(path)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	ps, err := InitProcess(pc)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	ps.Run()
-
-	if err := ps.Close(); err != nil {
+	if _, err := InitProcess(conf); err != nil {
 		t.Fatal(err)
 	}
 }

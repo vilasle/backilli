@@ -3,7 +3,10 @@ package process
 import (
 	"os"
 
+	"github.com/vilamslep/backilli/internal/entity"
+	"github.com/vilamslep/backilli/internal/period"
 	env "github.com/vilamslep/backilli/pkg/fs/environment"
+	"github.com/vilamslep/backilli/pkg/fs/manager"
 	"gopkg.in/yaml.v2"
 )
 
@@ -35,18 +38,6 @@ type VolumeConfig struct {
 	Region     string `yaml:"region"`
 }
 
-type Email struct {
-	Id          string   `yaml:"id"`
-	User        string   `yaml:"user"`
-	Password    string   `yaml:"password"`
-	FromName    string   `yaml:"fromName"`
-	SmtpAddress string   `yaml:"smtp"`
-	Recivers    []string `yaml:"recivers"`
-	Letter      struct {
-		Subject string `yaml:"subject"`
-	} `yaml:"letter"`
-}
-
 type Tool struct {
 	Postgresql struct {
 		Frontend string `yaml:"psql"`
@@ -58,28 +49,29 @@ type Tool struct {
 }
 
 type Task struct {
-	Id          string   `yaml:"id"`
-	Type        string   `yaml:"type"`
-	PartOfMonth string   `yaml:"part_of_month"`
-	Repeat      []int    `yaml:"repeat"`
-	PgDatabases []string `yaml:"psql_dbs"`
-	Files       []struct {
-		Path          string `yaml:"path"`
-		IncludeRegexp string `yaml:"include_regexp"`
-		ExcludeRegexp string `yaml:"exclude_regexp"`
-	} `yaml:"files"`
-	Compress   bool     `yaml:"compress"`
-	Volumes    []string `yaml:"volumes"`
-	KeepCopies int      `yaml:"keepCopies"`
+	Id          string       `yaml:"id"`
+	Type        string       `yaml:"type"`
+	PartOfMonth string       `yaml:"part_of_month"`
+	Repeat      []int        `yaml:"repeat"`
+	PgDatabases []string     `yaml:"psql_dbs"`
+	Files       []FileConfig `yaml:"files"`
+	Compress    bool         `yaml:"compress"`
+	Volumes     []string     `yaml:"volumes"`
+	KeepCopies  int          `yaml:"keepCopies"`
+}
+
+type FileConfig struct {
+	Path          string `yaml:"path"`
+	IncludeRegexp string `yaml:"include_regexp"`
+	ExcludeRegexp string `yaml:"exclude_regexp"`
 }
 
 type ProcessConfig struct {
 	Env           `yaml:"enviroments"`
 	Catalogs      `yaml:"catalogs"`
 	Volumes       []VolumeConfig `yaml:"volumes"`
-	Emails        []Email  `yaml:"email"`
-	ExternalTools Tool     `yaml:"external_tool"`
-	Tasks         []Task   `yaml:"tasks"`
+	ExternalTools Tool           `yaml:"external_tool"`
+	Tasks         []Task         `yaml:"tasks"`
 }
 
 func NewProcessConfig(path string) (ProcessConfig, error) {
@@ -117,4 +109,35 @@ func (pc *ProcessConfig) Psql() string {
 
 func (pc *ProcessConfig) Compressing() string {
 	return pc.ExternalTools.Compessing.Zip
+}
+
+func CreateBuilderConfigFromTask(task Task, volumes []manager.ManagerAtomic, rule period.PeriodRule ) []entity.BuilderConfig {
+	cfgs := make([]entity.BuilderConfig,0)
+
+	main := entity.BuilderConfig{
+		Id: task.Id,
+		FsManagers: volumes,
+		Compress: task.Compress,
+		Keep: task.KeepCopies,
+	}
+
+	for _, db := range task.PgDatabases {
+		c := main
+		c.Type = entity.POSTGRESQL
+		c.Database = db
+		c.PeriodRule = rule
+		cfgs = append(cfgs, c)
+	}
+
+	for _, f := range task.Files {
+		c := main
+		c.Type = entity.FILE
+		c.FilePath = f.Path
+		c.PeriodRule = rule
+		c.IncludeRegexp = f.IncludeRegexp
+		c.ExcludeRegexp = f.ExcludeRegexp
+		cfgs = append(cfgs, c)
+	}
+
+	return cfgs
 }

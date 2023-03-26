@@ -11,11 +11,14 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/vilamslep/backilli/pkg/fs"
 	env "github.com/vilamslep/backilli/pkg/fs/environment"
 	"github.com/vilamslep/backilli/pkg/fs/unit"
 )
 
 var ErrLoadingConfiguration = fmt.Errorf("failed to load cloud configuration")
+
+var limit int64 = 536870912
 
 type YandexClient struct {
 	s3client   *s3.Client
@@ -71,16 +74,24 @@ func (c YandexClient) Read(path string) ([]byte, error) {
 	return buffer.Bytes(), nil
 }
 
-func (c YandexClient) Write(src string, dst string) error {
-	file, err := os.Open(src)
+func (c YandexClient) Write(src string, dst string) (string, error) {
+	_, err := os.Stat(src)
 	if err != nil {
-		return err
+		return "", err
 	}
-	defer file.Close()
+	return c.put(src, dst)
+}
 
-	info, err := file.Stat()
+func (c YandexClient) put(src string, dst string) (string, error) {
+	fd, err := os.Open(src)
 	if err != nil {
-		return err
+		return "", err
+	}
+	defer fd.Close()
+
+	stat, err := fd.Stat()
+	if err != nil {
+		return "", err
 	}
 
 	cloudRoot := c.cloudRoot
@@ -89,68 +100,95 @@ func (c YandexClient) Write(src string, dst string) error {
 		cloudRoot = cloudRoot[:len(cloudRoot)-1]
 	}
 
-	s := []byte(dst)
-	for i := range s {
-		if s[i] == 0x5c {
-			s[i] = 0x2f
-		} 
-	}
-	ns := string(s)
+	s := bytes.ReplaceAll([]byte(dst), []byte{0x5c}, []byte{0x2f})
 
-	yapath := fmt.Sprintf("%s%s%s", cloudRoot, c.cloudSep, ns)
-
+	yapath := fmt.Sprintf("%s%s%s", cloudRoot, c.cloudSep, string(s))
+	bckpath := fs.GetFullPath("/", c.bucketName, yapath)
 	object := &s3.PutObjectInput{
 		Bucket:        aws.String(c.bucketName),
 		Key:           aws.String(yapath),
-		Body:          file,
-		ContentLength: info.Size(),
+		Body:          fd,
+		ContentLength: stat.Size(),
 	}
 
 	if _, err = c.s3client.PutObject(context.Background(), object); err != nil {
-		return err
+		return "", err
 	} else {
-		return nil
+		return bckpath, nil
 	}
 }
 
 func (c YandexClient) Ls(path string) ([]unit.File, error) {
 	var ls *s3.ListObjectsV2Output
 	var err error
-
+	lp := fs.GetFullPath("/", c.cloudRoot, path)
 	params := &s3.ListObjectsV2Input{
 		Bucket: aws.String(c.bucketName),
-		Prefix: aws.String(path),
+		Prefix: aws.String(lp),
 	}
 
-	if ls, err = c.s3client.ListObjectsV2(context.TODO(), params); err != nil {
+	if ls, err = c.s3client.ListObjectsV2(context.Background(), params); err != nil {
 		return nil, err
 	}
 
-	files := make([]unit.File, 0, len(ls.Contents))
+	part := make(map[string]unit.File)
 	for _, object := range ls.Contents {
-		path := strings.Split(*object.Key, "/")
+		srp := fs.GetFullPath("/", c.cloudRoot, path)
+		key := *object.Key
 
-		name := path[len(path)-1]
-		if name != "" {
-			files = append(files, unit.File{
-				Date: *object.LastModified,
-				Name: name,
-			})
+		spart := strings.Split(srp, "/")
+		cpart := strings.Split(key, "/")
+
+		for i := range cpart {
+			if len(spart) > i {
+				if spart[i] == cpart[i] {
+					continue
+				}
+			}
+			if cpart[i] == "" {
+				continue
+			}
+
+			if _, ok := part[cpart[i]]; !ok {
+				part[cpart[i]] = unit.File{
+					Date: *object.LastModified,
+					Name: strings.Join(cpart[i:i+1], "/"),
+				}
+			}
+			break
 		}
+	}
+	files := make([]unit.File, 0, len(ls.Contents))
+	for _, v := range part {
+		files = append(files, v)
 	}
 
 	return files, nil
 }
 
 func (c YandexClient) Remove(path string) error {
-	deleteParams := &s3.DeleteObjectInput{
-		Bucket: aws.String(c.bucketName),
-		Key:    aws.String(path),
-	}
+	lp := fs.GetFullPath("/", c.cloudRoot, path)
+	tpath := path
 
-	if _, err := c.s3client.DeleteObject(context.TODO(), deleteParams); err != nil {
+	fl, err := c.Ls(tpath)
+	if err != nil {
 		return err
 	}
+	if len(fl) == 0 {
+		deleteParams := &s3.DeleteObjectInput{
+			Bucket: aws.String(c.bucketName),
+			Key:    aws.String(lp),
+		}
+
+		if _, err := c.s3client.DeleteObject(context.Background(), deleteParams); err != nil {
+			return err
+		}
+	} else {
+		for _, v := range fl {
+			c.Remove(fs.GetFullPath("/", path, v.Name))
+		}
+	}
+
 	return nil
 }
 

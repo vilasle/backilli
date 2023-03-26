@@ -5,6 +5,22 @@ import (
 	"time"
 )
 
+type ClientConfig struct {
+	Id         string
+	Type       int
+	Host       string
+	Port       int
+	Domain     string
+	User       string
+	Password   string
+	MountPoint string
+	Root       string
+	BucketName string
+	KeyId      string
+	KeySecret  string
+	Region     string
+}
+
 type FileDescriptor interface {
 	Close() error
 	Stat() (os.FileInfo, error)
@@ -14,8 +30,8 @@ type FileDescriptor interface {
 
 type File struct {
 	Descriptor FileDescriptor
-	Name string
-	Date time.Time
+	Name       string
+	Date       time.Time
 }
 
 func (f File) Close() error {

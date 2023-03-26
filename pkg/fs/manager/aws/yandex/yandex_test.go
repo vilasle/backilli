@@ -15,11 +15,11 @@ func TestWrite(t *testing.T) {
 	}
 
 	conf := unit.ClientConfig{
-		Root:  env.Get("ROOT_PLACE"),
+		Root:       env.Get("ROOT_PLACE"),
 		BucketName: env.Get("BUCKET_NAME"),
-		Region: env.Get("AWS_REGION"),
-		KeyId: env.Get("AWS_ACCESS_KEY_ID"),
-		KeySecret: env.Get("AWS_SECRET_ACCESS_KEY"),
+		Region:     env.Get("AWS_REGION"),
+		KeyId:      env.Get("AWS_ACCESS_KEY_ID"),
+		KeySecret:  env.Get("AWS_SECRET_ACCESS_KEY"),
 	}
 
 	path := env.Get("PATH_SRC")
@@ -42,7 +42,7 @@ func TestWrite(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := client.Write(path, "test.txt"); err != nil {
+	if _, err := client.Write(path, "test.txt"); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -51,10 +51,13 @@ func TestRead(t *testing.T) {
 	if err := env.LoadEnvfile("test.env"); err != nil {
 		t.Fatal(err)
 	}
-	path := fmt.Sprintf("%s%s", env.Get("ROOT_PLACE"),env.Get("PATH_DST"))
+	path := fmt.Sprintf("%s%s", env.Get("ROOT_PLACE"), env.Get("PATH_DST"))
 	conf := unit.ClientConfig{
-		Root:  env.Get("ROOT_PLACE"),
+		Root:       env.Get("ROOT_PLACE"),
 		BucketName: env.Get("BUCKET_NAME"),
+		Region:     env.Get("AWS_REGION"),
+		KeyId:      env.Get("AWS_ACCESS_KEY_ID"),
+		KeySecret:  env.Get("AWS_SECRET_ACCESS_KEY"),
 	}
 
 	client, err := NewClient(conf)
@@ -85,8 +88,11 @@ func TestLs(t *testing.T) {
 	}
 
 	conf := unit.ClientConfig{
-		Root:  env.Get("ROOT_PLACE"),
+		Root:       env.Get("ROOT_PLACE"),
 		BucketName: env.Get("BUCKET_NAME"),
+		Region:     env.Get("AWS_REGION"),
+		KeyId:      env.Get("AWS_ACCESS_KEY_ID"),
+		KeySecret:  env.Get("AWS_SECRET_ACCESS_KEY"),
 	}
 
 	client, err := NewClient(conf)
@@ -124,8 +130,11 @@ func TestRemove(t *testing.T) {
 	}
 
 	conf := unit.ClientConfig{
-		Root:  env.Get("ROOT_PLACE"),
+		Root:       env.Get("ROOT_PLACE"),
 		BucketName: env.Get("BUCKET_NAME"),
+		Region:     env.Get("AWS_REGION"),
+		KeyId:      env.Get("AWS_ACCESS_KEY_ID"),
+		KeySecret:  env.Get("AWS_SECRET_ACCESS_KEY"),
 	}
 
 	client, err := NewClient(conf)

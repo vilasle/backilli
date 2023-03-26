@@ -82,8 +82,7 @@ func (c SmbClient) Read(path string) ([]byte, error) {
 	return res, nil
 }
 
-func (c SmbClient) Write(src string, dst string) error {
-
+func (c SmbClient) Write(src string, dst string) (string, error) {
 	fpf := fs.GetFullPath(string(smb2.PathSeparator), c.root, dst)
 	fpd := fs.Dir(fpf)
 	
@@ -91,26 +90,26 @@ func (c SmbClient) Write(src string, dst string) error {
 	if err != nil {
 		if os.IsNotExist(err) {
 			if err := c.mkdirAll(fpd); err != nil {
-				return err
+				return "", err
 			}
 		}else {
-			return err
+			return "", err
 		}
 	}
 
 	wd, err := c.createFile(fpf)
 	if err != nil {
-		return err
+		return "", err
 	}
 	defer wd.Close()
 
 	rd, err := os.OpenFile(src, os.O_RDONLY, os.ModePerm)
 	if err != nil {
-		return err
+		return "", err
 	}
 	defer rd.Close()
 
-	var bufferOffset int64 = 4096
+	var bufferOffset int64 = 1024 * 64
 	buf := make([]byte, bufferOffset)
 
 	for {
@@ -119,22 +118,23 @@ func (c SmbClient) Write(src string, dst string) error {
 			if err == io.EOF {
 				break
 			}
-			return err
+			return "", err
 		}
 
 		if n > 0 {
 			if _, err := wd.Write(buf); err != nil {
-				return err
+				return "", err
 			}
 			continue
 		}
 		break
 	}
-	return err
+	return fpf, err
 }
 
 func (c SmbClient) Ls(path string) ([]unit.File, error) {
-	stat, err := c.mountPoint.Stat(path)
+	fl := fs.GetFullPath("\\", c.root, path)
+	stat, err := c.mountPoint.Stat(fl)
 	if err != nil {
 		return nil, err
 	}
@@ -142,7 +142,7 @@ func (c SmbClient) Ls(path string) ([]unit.File, error) {
 		return nil, fmt.Errorf("file is not a directory")
 	}
 
-	ls, err := c.mountPoint.ReadDir(path)
+	ls, err := c.mountPoint.ReadDir(fl)
 	if err != nil {
 		return nil, err
 	}
@@ -157,7 +157,8 @@ func (c SmbClient) Ls(path string) ([]unit.File, error) {
 }
 
 func (c SmbClient) Remove(path string) error {
-	return c.mountPoint.RemoveAll(path)
+	rp := fs.GetFullPath("\\", c.root, path)
+	return c.mountPoint.RemoveAll(rp)
 }
 
 func (c SmbClient) Close() error {

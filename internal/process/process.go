@@ -1,27 +1,27 @@
 package process
 
 import (
-	"log"
-	"regexp"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/vilamslep/backilli/internal/action/dump/postgresql"
+	cfg "github.com/vilamslep/backilli/internal/config"
 	"github.com/vilamslep/backilli/internal/entity"
 	"github.com/vilamslep/backilli/internal/period"
-	"github.com/vilamslep/backilli/internal/tool"
-	"github.com/vilamslep/backilli/internal/tool/postgresql"
+	"github.com/vilamslep/backilli/internal/tool/compress"
 	"github.com/vilamslep/backilli/pkg/fs/manager"
 	"github.com/vilamslep/backilli/pkg/fs/unit"
+	"github.com/vilamslep/backilli/pkg/logger"
 )
 
 type Volume map[string]manager.ManagerAtomic
 
 type Process struct {
-	catalogs Catalogs
-	email    []Email
-	entitys  []entity.Entity
+	t        time.Time
+	catalogs cfg.Catalogs
+	entityes []entity.Entity
 	volumes  Volume
 }
 
@@ -29,16 +29,84 @@ func NewProcess() (*Process, error) {
 	return nil, nil
 }
 
+func (ps *Process) Entityes() []entity.Entity {
+	return ps.entityes
+}
+
+func InitProcess(conf cfg.ProcessConfig) (*Process, error) {
+	process := Process{}
+
+	logger.Debug("load enviroment vars")
+	{
+		if err := conf.SetEnviroment(); err != nil {
+			return nil, errors.Wrap(err, "could not set enviroment vars")
+		}
+	}
+
+	postgresql.PG_DUMP = conf.PGDump()
+	postgresql.PSQL = conf.Psql()
+	compress.Compressing = conf.Compressing()
+
+	process.catalogs = conf.Catalogs
+
+	logger.Debug("prepare config for initing volumes")
+	{
+		cfgs, err := convertConfigForFSManagers(conf.Volumes)
+		if err != nil {
+			return nil, err
+		}
+
+		logger.Debug("init volumes")
+		{
+			if ms, err := manager.InitManagersFromConfigs(cfgs); err == nil {
+				process.volumes = ms
+			} else {
+				return nil, errors.Wrap(err, "could not init volumes")
+			}
+		}
+	}
+
+	logger.Debug("init tasks")
+	{
+		if err := process.setEntityFromTask(conf.Tasks); err != nil {
+			return nil, errors.Wrap(err, "could not init tasks")
+		}
+	}
+
+	return &process, nil
+}
+
+func (p *Process) Stat() *ProcessStat {
+	stat := &ProcessStat{
+		ps:       p,
+		Date:     p.t,
+		entityes: p.entityes,
+	}
+	return stat
+}
+
 func (ps *Process) Run() {
 	t := time.Now()
+	ps.t = t
 	s := entity.EntitySetting{Tempdir: ps.catalogs.Transitory}
-	for _, ent := range ps.entitys {
-		if !ent.CheckPeriodRules(t) {
-			continue
+	for _, ent := range ps.entityes {
+		logger.Info("checking period rules")
+		{
+			if !ent.CheckPeriodRules(t) {
+				continue
+			} else {
+				logger.Infof("checking did not executed. task will be skip. %v", ent)
+			}
 		}
-		if ent.Backup(s, t); ent.Err() != nil {
-			log.Println(ent.Err())
-			continue
+
+		logger.Infof("run %v backup", ent)
+		{
+			if ent.Backup(s, t); ent.Err() != nil {
+				logger.Info("an error occurred during backup", ent.Err())
+				continue
+			} else {
+				logger.Infof("entity was finished success %v", ent)
+			}
 		}
 	}
 }
@@ -60,39 +128,7 @@ func (pc *Process) Close() error {
 	return nil
 }
 
-func InitProcess(conf ProcessConfig) (*Process, error) {
-	process := Process{}
-
-	if err := conf.SetEnviroment(); err != nil {
-		return nil, err
-	}
-
-	postgresql.PGDumpPath = conf.PGDump()
-	postgresql.PsqlPath = conf.Psql()
-	tool.Compressing = conf.Compressing()
-
-	process.catalogs = conf.Catalogs
-	process.email = conf.Emails
-
-	cfgs, err := convertConfigForFSManagers(conf.Volumes)
-	if err != nil {
-		return nil, err
-	}
-
-	if ms, err := manager.InitManagersFromConfigs(cfgs); err == nil {
-		process.volumes = ms
-	} else {
-		return nil, err
-	}
-
-	if err := process.setEntityFromTask(conf.Tasks); err != nil {
-		return nil, err
-	}
-
-	return &process, nil
-}
-
-func (pc *Process) setEntityFromTask(tasks []Task) error {
+func (pc *Process) setEntityFromTask(tasks []cfg.Task) error {
 	for _, v := range tasks {
 		rule := period.PeriodRule{}
 		if v.Type == period.DAILY {
@@ -102,56 +138,24 @@ func (pc *Process) setEntityFromTask(tasks []Task) error {
 		} else {
 			return errors.New("unexpected type of period")
 		}
-
-		if len(v.Files) > 0 {
-			pc.filesBackup(v, rule)
-		}
-
-		if len(v.PgDatabases) > 0 {
-
-		}
-	}
-	return nil
-}
-
-func (pc *Process) pgBackup(t Task) []entity.PostgresEntity {
-	return nil
-}
-
-func (pc *Process) filesBackup(t Task, rule period.PeriodRule) {
-	for _, r := range t.Files {
-		e := entity.FileEntity{
-			Id:         t.Id,
-			FilePath:   r.Path,
-			Compress:   t.Compress,
-			PeriodRule: rule,
-		}
-		if len(r.IncludeRegexp) > 0 {
-			if re, err := regexp.Compile(r.IncludeRegexp); err == nil {
-				e.IncludeRegexp = re
-			} else {
-				//TODO log
-			}
-		}
-
-		if len(r.ExcludeRegexp) > 0 {
-			if re, err := regexp.Compile(r.ExcludeRegexp); err == nil {
-				e.ExcludeRegexp = re
-			} else {
-				//TODO log
-			}
-		}
-
-		for _, m := range t.Volumes {
+		volumes := make([]manager.ManagerAtomic, 0)
+		for _, m := range v.Volumes {
 			if v, ok := pc.volumes[m]; ok {
-				e.FileManagers = append(e.FileManagers, v)
+				volumes = append(volumes, v)
 			}
 		}
-		pc.entitys = append(pc.entitys, e)
+
+		cs := cfg.CreateBuilderConfigFromTask(v, volumes, rule)
+		es, err := entity.CreateAllEntitys(cs)
+		if err != nil {
+			return errors.Wrapf(err, "could not create backup entity from config %v", cs)
+		}
+		pc.entityes = append(pc.entityes, es...)
 	}
+	return nil
 }
 
-func convertConfigForFSManagers(ms []VolumeConfig) ([]unit.ClientConfig, error) {
+func convertConfigForFSManagers(ms []cfg.VolumeConfig) ([]unit.ClientConfig, error) {
 	res := make([]unit.ClientConfig, 0, len(ms))
 	for _, v := range ms {
 		c := unit.ClientConfig{}
@@ -165,7 +169,7 @@ func convertConfigForFSManagers(ms []VolumeConfig) ([]unit.ClientConfig, error) 
 		c.KeyId = v.KeyId
 		c.KeySecret = v.KeySecret
 		c.Region = v.Region
-		if v.Type == SMBVolume {
+		if v.Type == cfg.SMBVolume {
 			socket := strings.Split(v.Address, ":")
 			c.Host = socket[0]
 			if len(socket) != 2 {
@@ -174,17 +178,17 @@ func convertConfigForFSManagers(ms []VolumeConfig) ([]unit.ClientConfig, error) 
 				if p, err := strconv.Atoi(socket[1]); err == nil {
 					c.Port = p
 				} else {
-					return nil, err
+					return nil, errors.Wrapf(err, "does not convert smb socket %s to expected type", v.Address)
 				}
 			}
 		}
 
 		switch v.Type {
-		case LocalVolume:
+		case cfg.LocalVolume:
 			c.Type = manager.LOCAL
-		case SMBVolume:
+		case cfg.SMBVolume:
 			c.Type = manager.SMB
-		case YandexStorageVolume:
+		case cfg.YandexStorageVolume:
 			c.Type = manager.YANDEX
 		default:
 			return nil, errors.New("unexpected type of volume")

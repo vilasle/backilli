@@ -10,7 +10,6 @@ import (
 )
 
 func TestWrite(t *testing.T) {
-
 	if err := env.LoadEnvfile("test.env"); err != nil {
 		t.Fatal(err)
 	}
@@ -48,13 +47,14 @@ func TestWrite(t *testing.T) {
 		User: user,
 		Password: password,
 		MountPoint: mountPoint,
+		Root: "test",
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer client.Close()
 
-	err = client.Write(pathSrc, path)
+	_, err = client.Write(pathSrc, path)
 	if err != nil {
 		t.Fatal(err)
 	}
