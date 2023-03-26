@@ -29,6 +29,10 @@ func NewProcess() (*Process, error) {
 	return nil, nil
 }
 
+func (ps *Process) Entityes() []entity.Entity {
+	return ps.entityes
+}
+
 func InitProcess(conf cfg.ProcessConfig) (*Process, error) {
 	process := Process{}
 

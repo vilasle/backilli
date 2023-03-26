@@ -13,13 +13,14 @@ import (
 	"github.com/vilamslep/backilli/pkg/fs"
 	"github.com/vilamslep/backilli/pkg/fs/environment"
 	"github.com/vilamslep/backilli/pkg/fs/manager"
+	"github.com/vilamslep/backilli/pkg/logger"
 )
 
 type postgresEntity struct {
 	id          string
 	database    string
 	compress    bool
-	fsmngr  []manager.ManagerAtomic
+	fsmngr      []manager.ManagerAtomic
 	period      period.PeriodRule
 	cnfconn     pgdb.ConnectionConfig
 	backupPath  string
@@ -29,6 +30,7 @@ type postgresEntity struct {
 	backupFiles []string
 	st          time.Time
 	et          time.Time
+	keep        int
 	bckpath     []string
 	status      string
 	err         error
@@ -40,13 +42,14 @@ func newPsqlEntity(conf BuilderConfig) (*postgresEntity, error) {
 		database: conf.Database,
 		compress: conf.Compress,
 		period:   conf.PeriodRule,
+		keep:     conf.Keep,
 	}
 	e.cnfconn = pgdb.ConnectionConfig{
 		User:     environment.Get("PGUSER"),
 		Password: environment.Get("PGPASSWORD"),
 		SSlMode:  false,
 	}
-	e.fsmngr = conf.FsManagers 
+	e.fsmngr = conf.FsManagers
 	return &e, nil
 }
 
@@ -124,6 +127,18 @@ func (e *postgresEntity) Backup(s EntitySetting, t time.Time) {
 	if e.bckpath, err = moveBackupToDestination(e, t); err != nil {
 		e.err = err
 		return
+	}
+	e.clearOldCopies()
+}
+
+func (e *postgresEntity) clearOldCopies() {
+	rmd, err := ClearOldCopies(e, e.keep)
+	if err != nil {
+		e.err = err
+	} else {
+		for _, v := range rmd {
+			logger.Infof("was removed file %s", v)
+		}
 	}
 }
 

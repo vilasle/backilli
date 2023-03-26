@@ -103,7 +103,7 @@ func (c YandexClient) put(src string, dst string) (string, error) {
 	s := bytes.ReplaceAll([]byte(dst), []byte{0x5c}, []byte{0x2f})
 
 	yapath := fmt.Sprintf("%s%s%s", cloudRoot, c.cloudSep, string(s))
-	bckpath := fs.GetFullPath("/", c.bucketName, yapath) 
+	bckpath := fs.GetFullPath("/", c.bucketName, yapath)
 	object := &s3.PutObjectInput{
 		Bucket:        aws.String(c.bucketName),
 		Key:           aws.String(yapath),
@@ -121,41 +121,74 @@ func (c YandexClient) put(src string, dst string) (string, error) {
 func (c YandexClient) Ls(path string) ([]unit.File, error) {
 	var ls *s3.ListObjectsV2Output
 	var err error
-
+	lp := fs.GetFullPath("/", c.cloudRoot, path)
 	params := &s3.ListObjectsV2Input{
 		Bucket: aws.String(c.bucketName),
-		Prefix: aws.String(path),
+		Prefix: aws.String(lp),
 	}
 
-	if ls, err = c.s3client.ListObjectsV2(context.TODO(), params); err != nil {
+	if ls, err = c.s3client.ListObjectsV2(context.Background(), params); err != nil {
 		return nil, err
 	}
 
-	files := make([]unit.File, 0, len(ls.Contents))
+	part := make(map[string]unit.File)
 	for _, object := range ls.Contents {
-		path := strings.Split(*object.Key, "/")
+		srp := fs.GetFullPath("/", c.cloudRoot, path)
+		key := *object.Key
 
-		name := path[len(path)-1]
-		if name != "" {
-			files = append(files, unit.File{
-				Date: *object.LastModified,
-				Name: name,
-			})
+		spart := strings.Split(srp, "/")
+		cpart := strings.Split(key, "/")
+
+		for i := range cpart {
+			if len(spart) > i {
+				if spart[i] == cpart[i] {
+					continue
+				}
+			}
+			if cpart[i] == "" {
+				continue
+			}
+
+			if _, ok := part[cpart[i]]; !ok {
+				part[cpart[i]] = unit.File{
+					Date: *object.LastModified,
+					Name: strings.Join(cpart[i:i+1], "/"),
+				}
+			}
+			break
 		}
+	}
+	files := make([]unit.File, 0, len(ls.Contents))
+	for _, v := range part {
+		files = append(files, v)
 	}
 
 	return files, nil
 }
 
 func (c YandexClient) Remove(path string) error {
-	deleteParams := &s3.DeleteObjectInput{
-		Bucket: aws.String(c.bucketName),
-		Key:    aws.String(path),
-	}
+	lp := fs.GetFullPath("/", c.cloudRoot, path)
+	tpath := path
 
-	if _, err := c.s3client.DeleteObject(context.TODO(), deleteParams); err != nil {
+	fl, err := c.Ls(tpath)
+	if err != nil {
 		return err
 	}
+	if len(fl) == 0 {
+		deleteParams := &s3.DeleteObjectInput{
+			Bucket: aws.String(c.bucketName),
+			Key:    aws.String(lp),
+		}
+
+		if _, err := c.s3client.DeleteObject(context.Background(), deleteParams); err != nil {
+			return err
+		}
+	} else {
+		for _, v := range fl {
+			c.Remove(fs.GetFullPath("/", path, v.Name))
+		}
+	}
+
 	return nil
 }
 

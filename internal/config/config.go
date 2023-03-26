@@ -118,6 +118,7 @@ func CreateBuilderConfigFromTask(task Task, volumes []manager.ManagerAtomic, rul
 		Id: task.Id,
 		FsManagers: volumes,
 		Compress: task.Compress,
+		Keep: task.KeepCopies,
 	}
 
 	for _, db := range task.PgDatabases {

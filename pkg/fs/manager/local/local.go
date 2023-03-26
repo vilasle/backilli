@@ -120,18 +120,21 @@ func (c LocalClient) Write(src string, dst string) (string, error) {
 }
 
 func (c LocalClient) Ls(path string) ([]unit.File, error) {
-	stat, err := os.Stat(path)
+	dir := fs.GetFullPath("", c.root, path)
+	stat, err := os.Stat(dir)
 	if err != nil {
 		return nil, err
 	}
+
 	if !stat.IsDir() {
 		return nil, fmt.Errorf("file is not a directory")
 	}
 
-	ls, err := ioutil.ReadDir(path)
+	ls, err := ioutil.ReadDir(dir)
 	if err != nil {
 		return nil, err
 	}
+
 	res := make([]unit.File, len(ls))
 	for i, f := range ls {
 		res[i] = unit.File{
@@ -144,7 +147,8 @@ func (c LocalClient) Ls(path string) ([]unit.File, error) {
 }
 
 func (c LocalClient) Remove(path string) error {
-	return os.RemoveAll(path)
+	rmp := fs.GetFullPath("", c.root, path)
+	return os.RemoveAll(rmp)
 }
 
 func (c LocalClient) Close() error {

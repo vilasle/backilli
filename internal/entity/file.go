@@ -14,6 +14,7 @@ import (
 	"github.com/vilamslep/backilli/internal/period"
 	"github.com/vilamslep/backilli/pkg/fs"
 	"github.com/vilamslep/backilli/pkg/fs/manager"
+	"github.com/vilamslep/backilli/pkg/logger"
 )
 
 type fileEntity struct {
@@ -29,6 +30,7 @@ type fileEntity struct {
 	bckfls   []string
 	st       time.Time
 	et       time.Time
+	keep     int
 	status   string
 	bckpaths []string
 	err      error
@@ -40,6 +42,7 @@ func newFileEntity(conf BuilderConfig) (*fileEntity, error) {
 		srcfl:    conf.FilePath,
 		compress: conf.Compress,
 		pr:       conf.PeriodRule,
+		keep:     conf.Keep,
 	}
 
 	if len(conf.IncludeRegexp) > 0 {
@@ -130,6 +133,7 @@ func (e *fileEntity) Backup(s EntitySetting, t time.Time) {
 		e.err = err
 	}
 
+	e.clearOldCopies()
 }
 
 func (e fileEntity) Err() error {
@@ -183,4 +187,15 @@ func (e fileEntity) Status() string {
 
 func (e fileEntity) BackupPaths() []string {
 	return e.bckpaths
+}
+
+func (e *fileEntity) clearOldCopies() {
+	rmd, err := ClearOldCopies(e, e.keep)
+	if err != nil {
+		e.err = err
+	} else {
+		for _, v := range rmd {
+			logger.Infof("was removed file %s", v)
+		}
+	}
 }

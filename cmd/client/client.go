@@ -1,8 +1,6 @@
 package main
 
 // FIXME errors with smb. I think it is connected with netword quality, need to try to do write thought attemps and checking connection
-// TODO clean old copies, if keep was errors in process does not remove old copies
-// TODO create reports
 // TODO save plan to restore
 // TODO need to create json configuration for each other task and each other day. With help this check existing copies and use this for restoring data
 
@@ -77,7 +75,7 @@ func main() {
 			logger.Error("could not finish process", err)
 			os.Exit(5)
 		}
-		
+
 		r := report.InitReports(proc)
 		if content, err := json.Marshal(r); err != nil {
 			logger.Error(err)

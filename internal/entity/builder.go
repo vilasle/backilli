@@ -7,26 +7,26 @@ import (
 	"github.com/vilamslep/backilli/pkg/fs/manager"
 )
 
-const(
+const (
 	FILE = iota + 1
-	POSTGRESQL 
+	POSTGRESQL
 )
 
 type BuilderConfig struct {
-	Id string
-	Type int
-	Database string
-	FilePath string
-	PeriodRule period.PeriodRule
-	Compress bool
+	Id            string
+	Type          int
+	Database      string
+	FilePath      string
+	PeriodRule    period.PeriodRule
+	Compress      bool
+	Keep          int
 	IncludeRegexp string
 	ExcludeRegexp string
-	FsManagers []manager.ManagerAtomic
-
+	FsManagers    []manager.ManagerAtomic
 }
 
-func build(conf BuilderConfig) (Entity, error ){
-	switch conf.Type{
+func build(conf BuilderConfig) (Entity, error) {
+	switch conf.Type {
 	case FILE:
 		return newFileEntity(conf)
 	case POSTGRESQL:

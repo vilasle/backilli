@@ -133,7 +133,8 @@ func (c SmbClient) Write(src string, dst string) (string, error) {
 }
 
 func (c SmbClient) Ls(path string) ([]unit.File, error) {
-	stat, err := c.mountPoint.Stat(path)
+	fl := fs.GetFullPath("\\", c.root, path)
+	stat, err := c.mountPoint.Stat(fl)
 	if err != nil {
 		return nil, err
 	}
@@ -141,7 +142,7 @@ func (c SmbClient) Ls(path string) ([]unit.File, error) {
 		return nil, fmt.Errorf("file is not a directory")
 	}
 
-	ls, err := c.mountPoint.ReadDir(path)
+	ls, err := c.mountPoint.ReadDir(fl)
 	if err != nil {
 		return nil, err
 	}
@@ -156,7 +157,8 @@ func (c SmbClient) Ls(path string) ([]unit.File, error) {
 }
 
 func (c SmbClient) Remove(path string) error {
-	return c.mountPoint.RemoveAll(path)
+	rp := fs.GetFullPath("\\", c.root, path)
+	return c.mountPoint.RemoveAll(rp)
 }
 
 func (c SmbClient) Close() error {
