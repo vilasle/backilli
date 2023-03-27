@@ -42,11 +42,11 @@ func (d *Dump) Dump() error {
 	var files []string
 
 	if tree, err = generateFilesTree(d.PathSource); err != nil {
-		return err
+		return errors.Wrap(err, "generate tree files")
 	}
 
 	if files, err = d.getFilesForBackuping(d.PathSource, tree); err != nil {
-		return err
+		return errors.Wrap(err, "checking files for backuping")
 	}
 
 	d.setEntitySize(files)
@@ -92,7 +92,7 @@ func (d *Dump) Dump() error {
 	if d.Compress {
 		bck, err := fs.CompressDir(workDirectory, d.PathDestination)
 		if err != nil {
-			return errors.Wrapf(err, "compressing failed")
+			return errors.Wrap(err, "compressing failed")
 		}
 		d.PathDestination = bck
 	}
