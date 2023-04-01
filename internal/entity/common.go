@@ -60,8 +60,6 @@ func moveBackupToDestination(e EntityInfo, t time.Time) ([]string, error) {
 	arErr := make([]error, 0)
 	arbck := make([]string, 0)
 
-	t = time.Date(2023, 3, 31, 0, 0, 0, 0, time.Local)
-
 	paths := e.BackupFilePath()
 	for i := range paths {
 		backpath := paths[i]

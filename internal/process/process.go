@@ -101,7 +101,7 @@ func (ps *Process) Run() {
 		logger.Infof("run %v backup", ent)
 		{
 			if ent.Backup(s, t); ent.Err() != nil {
-				logger.Info("an error occurred during backup", ent.Err())
+				logger.Infof("an error occurred during backup %v", ent.Err())
 				continue
 			} else {
 				logger.Infof("entity was finished success %v", ent)

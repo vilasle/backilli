@@ -5,6 +5,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"strings"
 
 	"github.com/vilamslep/backilli/pkg/fs"
 	"github.com/vilamslep/backilli/pkg/fs/unit"
@@ -147,7 +148,11 @@ func (c LocalClient) Ls(path string) ([]unit.File, error) {
 }
 
 func (c LocalClient) Remove(path string) error {
-	rmp := fs.GetFullPath("", c.root, path)
+	rmp := path
+	if !strings.Contains(path, c.root) {
+		rmp = fs.GetFullPath("", c.root, path)
+	}
+
 	return os.RemoveAll(rmp)
 }
 
