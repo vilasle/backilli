@@ -121,7 +121,7 @@ func ClearOldCopies(e EntityInfo, keep int) ([]string, error) {
 		remove := ls[:len(ls)-keep]
 
 		for _, r := range remove {
-			path := fs.GetFullPath("", e.Id(), r.Name)
+			path := fs.GetFullPath("/", e.Id(), r.Name)
 			localLs, err := m.Ls(path)
 			if err != nil {
 				arErr = append(arErr, err)
@@ -130,7 +130,7 @@ func ClearOldCopies(e EntityInfo, keep int) ([]string, error) {
 			for _, f := range localLs {
 				oid := e.OID()
 				if f.Name == oid {
-					rmf := fs.GetFullPath("", path, f.Name)
+					rmf := fs.GetFullPath("/", path, f.Name)
 					if err := m.Remove(rmf); err != nil {
 						arErr = append(arErr, err)
 					} else {
