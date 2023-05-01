@@ -2,11 +2,11 @@ package period
 
 import "time"
 
-const(
+const (
 	MONTHLY = "monthly"
 )
 
-//Path of month
+// Path of month
 type PartOfMonth string
 
 const (
@@ -50,21 +50,21 @@ func NewMonthRule(month []int, partOfMonth PartOfMonth) MonthRule {
 		NOV: 0,
 		DEC: 0,
 	}
-	
+
 	for _, v := range month {
 		m[v]++
 	}
 
 	excludeMonth := make([]int, 0)
 	for k, v := range month {
-		if v > 0 {
+		if v == 0 {
 			excludeMonth = append(excludeMonth, k)
 		}
-	} 
+	}
 
 	return MonthRule{
 		ExcludeMonth: excludeMonth,
-		PartOfMonth: partOfMonth,
+		PartOfMonth:  partOfMonth,
 	}
 }
 
