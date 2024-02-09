@@ -3,6 +3,7 @@ package process
 import (
 	"os"
 
+	"github.com/pkg/errors"
 	"github.com/vilamslep/backilli/internal/entity"
 	"github.com/vilamslep/backilli/internal/period"
 	env "github.com/vilamslep/backilli/pkg/fs/environment"
@@ -14,6 +15,10 @@ const (
 	LocalVolume         = "local"
 	SMBVolume           = "smb"
 	YandexStorageVolume = "yandex.storage"
+)
+
+const (
+	dbmsPostgresql = "pgsql"
 )
 
 type Env map[string]string
@@ -53,7 +58,7 @@ type Task struct {
 	Type        string       `yaml:"type"`
 	PartOfMonth string       `yaml:"part_of_month"`
 	Repeat      []int        `yaml:"repeat"`
-	PgDatabases []string     `yaml:"psql_dbs"`
+	Databases   []Database   `yaml:"dbs"`
 	Files       []FileConfig `yaml:"files"`
 	Compress    bool         `yaml:"compress"`
 	Volumes     []string     `yaml:"volumes"`
@@ -67,11 +72,26 @@ type FileConfig struct {
 }
 
 type ProcessConfig struct {
-	Env           `yaml:"enviroments"`
-	Catalogs      `yaml:"catalogs"`
-	Volumes       []VolumeConfig `yaml:"volumes"`
-	ExternalTools Tool           `yaml:"external_tool"`
-	Tasks         []Task         `yaml:"tasks"`
+	Env              `yaml:"enviroments"`
+	DatabaseManagers []DatabaseManager `yaml:"dbms_managers"`
+	Catalogs         `yaml:"catalogs"`
+	Volumes          []VolumeConfig `yaml:"volumes"`
+	ExternalTools    Tool           `yaml:"external_tool"`
+	Tasks            []Task         `yaml:"tasks"`
+}
+
+type DatabaseManager struct {
+	Name      string `yaml:"name"`
+	Host      string `yaml:"hosts"`
+	Port      int    `yaml:"port"`
+	User      string `yaml:"user"`
+	Password  string `yaml:"password"`
+	Interface string `yaml:"interface"`
+}
+
+type Database struct {
+	Name    string `yaml:"name"`
+	Manager string `yaml:"manager"`
 }
 
 func NewProcessConfig(path string) (ProcessConfig, error) {
@@ -111,20 +131,30 @@ func (pc *ProcessConfig) Compressing() string {
 	return pc.ExternalTools.Compessing.Zip
 }
 
-func CreateBuilderConfigFromTask(task Task, volumes []manager.ManagerAtomic, rule period.PeriodRule ) []entity.BuilderConfig {
-	cfgs := make([]entity.BuilderConfig,0)
+func CreateBuilderConfigFromTask(
+	task Task,
+	volumes []manager.ManagerAtomic,
+	rule period.PeriodRule) ([]entity.BuilderConfig, error) {
+
+	cfgs := make([]entity.BuilderConfig, 0)
 
 	main := entity.BuilderConfig{
-		Id: task.Id,
+		Id:         task.Id,
 		FsManagers: volumes,
-		Compress: task.Compress,
-		Keep: task.KeepCopies,
+		Compress:   task.Compress,
+		Keep:       task.KeepCopies,
 	}
 
-	for _, db := range task.PgDatabases {
+	for _, db := range task.Databases {
 		c := main
-		c.Type = entity.POSTGRESQL
-		c.Database = db
+
+		switch db.Manager {
+		case dbmsPostgresql:
+			c.Type = entity.POSTGRESQL
+		default:
+			return nil, errors.Errorf("unknown type of manager '%s'", db.Manager)
+		}
+		c.Database = db.Name
 		c.PeriodRule = rule
 		cfgs = append(cfgs, c)
 	}
@@ -138,6 +168,5 @@ func CreateBuilderConfigFromTask(task Task, volumes []manager.ManagerAtomic, rul
 		c.ExcludeRegexp = f.ExcludeRegexp
 		cfgs = append(cfgs, c)
 	}
-
-	return cfgs
+	return cfgs, nil
 }

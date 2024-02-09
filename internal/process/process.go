@@ -130,13 +130,15 @@ func (pc *Process) Close() error {
 func (pc *Process) setEntityFromTask(tasks []cfg.Task) error {
 	for _, v := range tasks {
 		rule := period.PeriodRule{}
-		if v.Type == period.DAILY {
+		switch v.Type {
+		case period.DAILY:
 			rule.Day = period.NewWeekdaysRule(v.Repeat)
-		} else if v.Type == period.MONTHLY {
+		case period.MONTHLY:
 			rule.Month = period.NewMonthRule(v.Repeat, period.PartOfMonth(v.PartOfMonth))
-		} else {
+		default:
 			return errors.New("unexpected type of period")
 		}
+
 		volumes := make([]manager.ManagerAtomic, 0)
 		for _, m := range v.Volumes {
 			if v, ok := pc.volumes[m]; ok {
@@ -144,7 +146,10 @@ func (pc *Process) setEntityFromTask(tasks []cfg.Task) error {
 			}
 		}
 
-		cs := cfg.CreateBuilderConfigFromTask(v, volumes, rule)
+		cs, err := cfg.CreateBuilderConfigFromTask(v, volumes, rule)
+		if err != nil {
+			return errors.Wrap(err, "there are errors on creation config tasks")
+		}
 		es, err := entity.CreateAllEntitys(cs)
 		if err != nil {
 			return errors.Wrapf(err, "could not create backup entity from config %v", cs)
