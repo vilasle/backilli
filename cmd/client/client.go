@@ -1,16 +1,18 @@
 package main
 
-// FIXME errors with smb. I think it is connected with netword quality, need to try to do write thought attemps and checking connection
-// TODO save plan to restore
-// TODO need to create json configuration for each other task and each other day. With help this check existing copies and use this for restoring data
+//FIXME errors with smb. I think it is connected with netword quality, need to try to do write thought attemps and checking connection
+//TODO save plan to restore
+//TODO need to create json configuration for each other task and each other day. With help this check existing copies and use this for restoring data
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
+	"io"
+	"log"
 	"os"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/spf13/pflag"
 	cfg "github.com/vilamslep/backilli/internal/config"
 	ps "github.com/vilamslep/backilli/internal/process"
@@ -22,6 +24,7 @@ var (
 	configPath string
 	showHelp   bool
 	loggerPath string
+	enviroment string
 
 	//errors
 	configErr error = errors.New("does not define config file")
@@ -38,56 +41,79 @@ func main() {
 		pflag.Usage()
 		return
 	}
+	logWriter, err := defineLogDestination()
+	if err != nil {
+		log.Println(err)
+	}
+	defer logWriter.Close()
 
-	logger.InitLogger(loggerPath)
+	logger.InitLogger(enviroment, logWriter)
 
 	if err := checkArgs(); err != nil {
-		logger.Error(err)
+		logger.Error(err.Error())
 		os.Exit(1)
 	}
 
-	_, err := os.Stat(configPath)
+	_, err = os.Stat(configPath)
 	if os.IsNotExist(err) {
 		logger.Errorf("config file '%s' is not exists", configPath)
 		os.Exit(2)
 	}
-	t := time.Now()
+
 	logger.Infof("init procces from %s", configPath)
-	{
-		conf, err = cfg.NewProcessConfig(configPath)
+
+	conf, err = cfg.NewProcessConfig(configPath)
+	if err != nil {
+		logger.Error("could not read config file", err)
+		os.Exit(3)
+	}
+
+	logger.Debugf("config was read. Result = %v", conf)
+
+	proc, err = ps.InitProcess(conf)
+	if err != nil {
+		logger.Error("could not init process", err)
+		os.Exit(4)
+	}
+
+	logger.Info("run process")
+
+	//process can execute a long time
+	//The base case using - it run on evening, after work and continue several hours
+	//In executing time date can have changes because get time before running process
+	//because I want to have correct report date
+	t := time.Now()
+
+	proc.Run()
+	if err := proc.Close(); err != nil {
+		logger.Error("could not finish process", err)
+		os.Exit(5)
+	}
+
+	r := report.InitReports(proc)
+	if content, err := json.Marshal(r); err != nil {
+		logger.Error(err.Error())
+	} else {
+		fd, err := os.Create(fmt.Sprintf("report_%s.json", t.Format("02-01-2006")))
 		if err != nil {
-			logger.Error("could not read config file", err)
-			os.Exit(3)
+			logger.Error(err.Error())
 		}
-
-		logger.Debugf("config was read. Result = %v", conf)
-
-		proc, err = ps.InitProcess(conf)
-		if err != nil {
-			logger.Error("could not init process", err)
-			os.Exit(4)
+		if _, err := fd.Write(content); err != nil {
+			logger.Error(err.Error())
 		}
 	}
-	logger.Info("run process")
-	{
-		proc.Run()
-		if err := proc.Close(); err != nil {
-			logger.Error("could not finish process", err)
-			os.Exit(5)
-		}
 
-		r := report.InitReports(proc)
-		if content, err := json.Marshal(r); err != nil {
-			logger.Error(err)
-		} else {
-			fd, err := os.Create(fmt.Sprintf("report_%s.json", t.Format("02-01-2006")))
-			if err != nil {
-				logger.Error(err)
-			}
-			if _, err := fd.Write(content); err != nil {
-				logger.Error(err)
-			}
+}
+
+func defineLogDestination() (io.WriteCloser, error) {
+	if loggerPath != "" {
+		fd, err := os.OpenFile(loggerPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, os.ModePerm)
+		if err != nil {
+			return os.Stdout, errors.Wrapf(err, "can not open file. Log will write to stdout")
 		}
+		return fd, nil
+	} else {
+		return os.Stdout, nil
 	}
 }
 
@@ -108,6 +134,9 @@ func setCliAgrs() {
 	pflag.StringVarP(&loggerPath, "log", "l",
 		"",
 		"Path to log file. If is not filled then log will write to stdout")
+	pflag.StringVarP(&enviroment, "env", "e",
+		"local",
+		"kind of enviroment running. Log level and format depend on this")
 	pflag.Parse()
 }
 
