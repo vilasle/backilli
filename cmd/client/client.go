@@ -83,7 +83,7 @@ func main() {
 	//In executing time date can have changes because get time before running process
 	//because I want to have correct report date
 	t := time.Now()
-
+	
 	proc.Run()
 	if err := proc.Close(); err != nil {
 		logger.Error("could not finish process", err)
@@ -102,8 +102,9 @@ func main() {
 			logger.Error(err.Error())
 		}
 	}
-
 }
+
+
 
 func defineLogDestination() (io.WriteCloser, error) {
 	if loggerPath != "" {

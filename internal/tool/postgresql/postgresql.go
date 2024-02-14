@@ -3,12 +3,11 @@ package postgresql
 import (
 	"bytes"
 	"fmt"
-	"os/exec"
 	"strings"
-	
+
+	_ "github.com/lib/pq"
 	"github.com/pkg/errors"
 	"github.com/vilamslep/backilli/pkg/fs/executing"
-	_ "github.com/lib/pq"
 )
 
 func Databases(conf ConnectionConfig, dbsFilter []string) ([]Database, error) {
@@ -75,13 +74,10 @@ func CopyBinary(db string, src string, dst string) (err error) {
 	var stderr bytes.Buffer
 
 	command := fmt.Sprintf("COPY %s TO '%s' WITH BINARY;", src, dst)
-	cmd := exec.Command(PsqlPath, "--dbname", db, "--command", command)
+	args := []string{"--dbname", db, "--command", command}
 
-	cmd.Stderr = &stderr
-
-	if err := executing.ExecCommand(cmd); err != nil {
+	if err := executing.Execute(PsqlPath, nil, &stderr, args...); err != nil {
 		return errors.Wrapf(err, "binary copying is failed. Command %s. \n stderr: %s", command, stderr.String())
 	}
 	return err
 }
-

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strconv"
@@ -58,20 +57,18 @@ func (d *Dump) Dump() (err error) {
 	if quantityOfJobs < 1 {
 		quantityOfJobs = 1
 	}
-	cmd := exec.Command(PG_DUMP,
-		"--format", "directory", "--no-password",
+
+	args := make([]string, 0, 13+(len(d.ExcludedTable)*2))
+	args = append(args, "--format", "directory", "--no-password",
 		"--jobs", strconv.Itoa(quantityOfJobs),
 		"--blobs",
 		"--encoding", "UTF8",
 		"--verbose", "--file", logicalbc,
 		"--dbname", d.Database)
 
-	excludingArgs(cmd, d.ExcludedTable)
+	excludingArgs(args, d.ExcludedTable)
 
-	cmd.Stderr = &d.stderr
-	cmd.Stdout = &d.stdout
-
-	if err := executing.ExecCommand(cmd); err != nil {
+	if err := executing.Execute(PG_DUMP, &d.stdout, &d.stderr, args...); err != nil {
 		if err != nil {
 			return fmt.Errorf(d.stderr.String(), err)
 		}
@@ -136,7 +133,7 @@ func (d *Dump) Dump() (err error) {
 	return err
 }
 
-func (d *Dump) checkLogs() (error) {
+func (d *Dump) checkLogs() error {
 	fout := fmt.Sprintf("%s.log", d.Database)
 	out, err := os.Create(fout)
 	if err != nil {
@@ -170,10 +167,10 @@ func (d *Dump) setSourceSize() error {
 	}
 }
 
-func excludingArgs(cmd *exec.Cmd, excludedTable []string) {
+func excludingArgs(args []string, excludedTable []string) {
 	for _, i := range excludedTable {
-		cmd.Args = append(cmd.Args, "--exclude-table-data")
-		cmd.Args = append(cmd.Args, i)
+		args = append(args, "--exclude-table-data")
+		args = append(args, i)
 	}
 }
 

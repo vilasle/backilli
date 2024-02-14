@@ -1,6 +1,7 @@
 package process
 
 import (
+	"bytes"
 	"strconv"
 	"strings"
 	"time"
@@ -11,6 +12,7 @@ import (
 	"github.com/vilamslep/backilli/internal/entity"
 	"github.com/vilamslep/backilli/internal/period"
 	"github.com/vilamslep/backilli/internal/tool/compress"
+	"github.com/vilamslep/backilli/pkg/fs/executing"
 	"github.com/vilamslep/backilli/pkg/fs/manager"
 	"github.com/vilamslep/backilli/pkg/fs/unit"
 	"github.com/vilamslep/backilli/pkg/logger"
@@ -23,6 +25,50 @@ type Process struct {
 	catalogs cfg.Catalogs
 	entityes []entity.Entity
 	volumes  Volume
+	events   eventsManager
+}
+
+type eventsManager struct {
+	beforeStart  []string
+	beforeFinish []string
+}
+
+func (mng eventsManager) BeforeStart() error {
+	err := errors.New("beforeFinish event has error")
+
+	errs := make([]error, 0, len(mng.beforeFinish))
+	var stderr bytes.Buffer
+	for _, c := range mng.beforeStart {
+		if err := executing.Execute(c, nil, &stderr); err != nil {
+			errs = append(errs, err)
+		}
+	}
+	return joinErrors(errs, err)
+}
+
+func (mng eventsManager) BeforeFinish() error {
+	err := errors.New("beforeFinish event has error")
+
+	errs := make([]error, 0, len(mng.beforeStart))
+
+	var stderr bytes.Buffer
+	for _, c := range mng.beforeFinish {
+		if err := executing.Execute(c, nil, &stderr); err != nil {
+			errs = append(errs, err)
+		}
+	}
+	return joinErrors(errs, err)
+}
+
+func joinErrors(errs []error, mainErr error) error {
+	if len(errs) == 0 {
+		return nil
+	}
+	serr := mainErr
+	for _, err := range errs {
+		serr = errors.Wrap(serr, err.Error())
+	}
+	return serr
 }
 
 func NewProcess() (*Process, error) {
@@ -73,6 +119,11 @@ func InitProcess(conf cfg.ProcessConfig) (*Process, error) {
 		}
 	}
 
+	process.events = eventsManager{
+		beforeStart:  conf.BeforeStart,
+		beforeFinish: conf.BeforeFinish,
+	}
+
 	return &process, nil
 }
 
@@ -83,6 +134,15 @@ func (p *Process) Stat() *ProcessStat {
 		entityes: p.entityes,
 	}
 	return stat
+}
+
+// events
+func (ps *Process) beforeStart() error {
+	return ps.events.BeforeStart()
+}
+
+func (ps *Process) beforeFinish() error {
+	return ps.events.BeforeFinish()
 }
 
 func (ps *Process) Run() {

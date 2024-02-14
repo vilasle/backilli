@@ -2,11 +2,21 @@ package executing
 
 import (
 	"fmt"
+	"io"
 	"os/exec"
 	"syscall"
 )
 
-func ExecCommand(cmd *exec.Cmd) (err error) {
+func Execute(command string, 
+	out io.Writer, 
+	err io.Writer,  
+	args ...string) error {
+	
+	cmd := exec.Command(command, args...)
+	return execCommand(cmd)
+}
+
+func execCommand(cmd *exec.Cmd) (err error) {
 	if err := cmd.Start(); err != nil {
 		return err
 	}

@@ -78,6 +78,7 @@ type ProcessConfig struct {
 	Volumes          []VolumeConfig `yaml:"volumes"`
 	ExternalTools    Tool           `yaml:"external_tool"`
 	Tasks            []Task         `yaml:"tasks"`
+	Events           `yaml:"events"`
 }
 
 type DatabaseManager struct {
@@ -87,6 +88,11 @@ type DatabaseManager struct {
 	User      string `yaml:"user"`
 	Password  string `yaml:"password"`
 	Interface string `yaml:"interface"`
+}
+
+type Events struct {
+	BeforeStart  []string `yaml:"beforeStart"`
+	BeforeFinish []string `yaml:"beforeFinish"`
 }
 
 type Database struct {
