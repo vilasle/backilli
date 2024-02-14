@@ -9,6 +9,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/vilamslep/backilli/internal/action/dump/postgresql"
 	cfg "github.com/vilamslep/backilli/internal/config"
+	"github.com/vilamslep/backilli/internal/database"
 	"github.com/vilamslep/backilli/internal/entity"
 	"github.com/vilamslep/backilli/internal/period"
 	"github.com/vilamslep/backilli/internal/tool/compress"
@@ -21,11 +22,12 @@ import (
 type Volume map[string]manager.ManagerAtomic
 
 type Process struct {
-	t        time.Time
-	catalogs cfg.Catalogs
-	entityes []entity.Entity
-	volumes  Volume
-	events   eventsManager
+	t            time.Time
+	catalogs     cfg.Catalogs
+	dbmsManagers database.Managers
+	entityes     []entity.Entity
+	volumes      Volume
+	events       eventsManager
 }
 
 type eventsManager struct {
@@ -34,12 +36,23 @@ type eventsManager struct {
 }
 
 func (mng eventsManager) BeforeStart() error {
-	err := errors.New("beforeFinish event has error")
+	var (
+		cmd, args []string
+		app       string
+		err       = errors.New("beforeFinish event has error")
+		errs      = make([]error, 0, len(mng.beforeStart))
+		stderr    bytes.Buffer
+	)
 
-	errs := make([]error, 0, len(mng.beforeFinish))
-	var stderr bytes.Buffer
 	for _, c := range mng.beforeStart {
-		if err := executing.Execute(c, nil, &stderr); err != nil {
+		if strings.Contains(c, " ") {
+			cmd = strings.Split(c, " ")
+			app, args = cmd[0], cmd[1:]
+		} else {
+			app = c
+		}
+
+		if err := executing.Execute(app, nil, &stderr, args...); err != nil {
 			errs = append(errs, err)
 		}
 	}
@@ -47,13 +60,23 @@ func (mng eventsManager) BeforeStart() error {
 }
 
 func (mng eventsManager) BeforeFinish() error {
-	err := errors.New("beforeFinish event has error")
+	var (
+		cmd, args []string
+		app       string
+		err       = errors.New("beforeFinish event has error")
+		errs      = make([]error, 0, len(mng.beforeStart))
+		stderr    bytes.Buffer
+	)
 
-	errs := make([]error, 0, len(mng.beforeStart))
-
-	var stderr bytes.Buffer
 	for _, c := range mng.beforeFinish {
-		if err := executing.Execute(c, nil, &stderr); err != nil {
+		if strings.Contains(c, " ") {
+			cmd = strings.Split(c, " ")
+			app, args = cmd[0], cmd[1:]
+		} else {
+			app = c
+		}
+
+		if err := executing.Execute(app, nil, &stderr, args...); err != nil {
 			errs = append(errs, err)
 		}
 	}
@@ -71,9 +94,9 @@ func joinErrors(errs []error, mainErr error) error {
 	return serr
 }
 
-func NewProcess() (*Process, error) {
-	return nil, nil
-}
+// func NewProcess() (*Process, error) {
+// 	return nil, nil
+// }
 
 func (ps *Process) Entityes() []entity.Entity {
 	return ps.entityes
@@ -83,10 +106,8 @@ func InitProcess(conf cfg.ProcessConfig) (*Process, error) {
 	process := Process{}
 
 	logger.Debug("load enviroment vars")
-	{
-		if err := conf.SetEnviroment(); err != nil {
-			return nil, errors.Wrap(err, "could not set enviroment vars")
-		}
+	if err := conf.SetEnviroment(); err != nil {
+		return nil, errors.Wrap(err, "could not set enviroment vars")
 	}
 
 	postgresql.PG_DUMP = conf.PGDump()
@@ -96,27 +117,32 @@ func InitProcess(conf cfg.ProcessConfig) (*Process, error) {
 	process.catalogs = conf.Catalogs
 
 	logger.Debug("prepare config for initing volumes")
-	{
-		cfgs, err := convertConfigForFSManagers(conf.Volumes)
-		if err != nil {
-			return nil, err
-		}
+	cfgs, err := convertConfigForFSManagers(conf.Volumes)
+	if err != nil {
+		return nil, err
+	}
 
-		logger.Debug("init volumes")
-		{
-			if ms, err := manager.InitManagersFromConfigs(cfgs); err == nil {
-				process.volumes = ms
-			} else {
-				return nil, errors.Wrap(err, "could not init volumes")
-			}
+	logger.Debug("init volumes")
+	if ms, err := manager.InitManagersFromConfigs(cfgs); err == nil {
+		process.volumes = ms
+	} else {
+		return nil, errors.Wrap(err, "could not init volumes")
+	}
+
+	logger.Debug("init database managers")
+	if len(process.dbmsManagers) > 0 {
+		if md, err := database.InitManagersFromConfig(conf.DatabaseManagers); err == nil {
+			process.dbmsManagers = md
+		} else {
+			return nil, errors.Wrap(err, "could not init database managers")
 		}
+	} else {
+		logger.Debug("there are not database managers in config")
 	}
 
 	logger.Debug("init tasks")
-	{
-		if err := process.setEntityFromTask(conf.Tasks); err != nil {
-			return nil, errors.Wrap(err, "could not init tasks")
-		}
+	if err := process.setEntityFromTask(conf.Tasks); err != nil {
+		return nil, errors.Wrap(err, "could not init tasks")
 	}
 
 	process.events = eventsManager{
@@ -146,26 +172,25 @@ func (ps *Process) beforeFinish() error {
 }
 
 func (ps *Process) Run() {
+	ps.beforeStart()
+	defer ps.beforeFinish()
+
 	t := time.Now()
 	ps.t = t
 	s := entity.EntitySetting{Tempdir: ps.catalogs.Transitory}
 	for _, ent := range ps.entityes {
 		logger.Info("checking period rules")
-		{
-			if !ent.CheckPeriodRules(t) {
-				logger.Infof("checking did not executed. task will be skip. %v", ent)
-				continue
-			}
+		if !ent.CheckPeriodRules(t) {
+			logger.Infof("checking did not executed. task will be skip. %v", ent)
+			continue
 		}
 
 		logger.Infof("run %v backup", ent)
-		{
-			if ent.Backup(s, t); ent.Err() != nil {
-				logger.Infof("an error occurred during backup %v", ent.Err())
-				continue
-			} else {
-				logger.Infof("entity was finished success %v", ent)
-			}
+		if ent.Backup(s, t); ent.Err() != nil {
+			logger.Infof("an error occurred during backup %v", ent.Err())
+			continue
+		} else {
+			logger.Infof("entity was finished success %v", ent)
 		}
 	}
 }
@@ -257,7 +282,6 @@ func convertConfigForFSManagers(ms []cfg.VolumeConfig) ([]unit.ClientConfig, err
 		default:
 			return nil, errors.New("unexpected type of volume")
 		}
-
 		res = append(res, c)
 	}
 	return res, nil

@@ -31,16 +31,17 @@ var (
 )
 
 func main() {
-
-	var conf cfg.ProcessConfig
-	var proc *ps.Process
+	var (
+		conf cfg.ProcessConfig
+		proc *ps.Process
+	)
 
 	setCliAgrs()
-
 	if showHelp {
 		pflag.Usage()
 		return
 	}
+	
 	logWriter, err := defineLogDestination()
 	if err != nil {
 		log.Println(err)
@@ -83,7 +84,7 @@ func main() {
 	//In executing time date can have changes because get time before running process
 	//because I want to have correct report date
 	t := time.Now()
-	
+
 	proc.Run()
 	if err := proc.Close(); err != nil {
 		logger.Error("could not finish process", err)
@@ -103,8 +104,6 @@ func main() {
 		}
 	}
 }
-
-
 
 func defineLogDestination() (io.WriteCloser, error) {
 	if loggerPath != "" {

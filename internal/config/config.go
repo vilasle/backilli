@@ -73,7 +73,7 @@ type FileConfig struct {
 
 type ProcessConfig struct {
 	Env              `yaml:"enviroments"`
-	DatabaseManagers []DatabaseManager `yaml:"dbms_managers"`
+	DatabaseManagers `yaml:"dbms_managers"`
 	Catalogs         `yaml:"catalogs"`
 	Volumes          []VolumeConfig `yaml:"volumes"`
 	ExternalTools    Tool           `yaml:"external_tool"`
@@ -83,11 +83,27 @@ type ProcessConfig struct {
 
 type DatabaseManager struct {
 	Name      string `yaml:"name"`
-	Host      string `yaml:"hosts"`
+	Host      string `yaml:"host"`
 	Port      int    `yaml:"port"`
 	User      string `yaml:"user"`
 	Password  string `yaml:"password"`
 	Interface string `yaml:"interface"`
+}
+
+type DatabaseManagers []DatabaseManager
+
+func (m DatabaseManagers) GetAsSliceOfMaps() map[string]map[string]any {
+	res := make(map[string]map[string]any)
+	for _, v := range m {
+		res[v.Name] = map[string]any{ 
+			"host": v.Host, 
+			"port": v.Port, 
+			"user": v.User, 
+			"password": v.Password, 
+			"dbInterface": v.Interface,
+		}
+	}
+	return res
 }
 
 type Events struct {
