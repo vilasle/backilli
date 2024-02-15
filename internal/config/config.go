@@ -4,6 +4,7 @@ import (
 	"os"
 
 	"github.com/pkg/errors"
+	"github.com/vilamslep/backilli/internal/database"
 	"github.com/vilamslep/backilli/internal/entity"
 	"github.com/vilamslep/backilli/internal/period"
 	env "github.com/vilamslep/backilli/pkg/fs/environment"
@@ -156,7 +157,8 @@ func (pc *ProcessConfig) Compressing() string {
 func CreateBuilderConfigFromTask(
 	task Task,
 	volumes []manager.ManagerAtomic,
-	rule period.PeriodRule) ([]entity.BuilderConfig, error) {
+	rule period.PeriodRule, 
+	dbmanagers database.Managers) ([]entity.BuilderConfig, error) {
 
 	cfgs := make([]entity.BuilderConfig, 0)
 
@@ -178,6 +180,13 @@ func CreateBuilderConfigFromTask(
 		}
 		c.Database = db.Name
 		c.PeriodRule = rule
+		
+		if v, ok := dbmanagers[db.Manager]; ok {
+			c.DatabaseManager = v
+		} else {
+			return nil, errors.Errorf("does not define database manager in task %v", db )
+		}
+
 		cfgs = append(cfgs, c)
 	}
 

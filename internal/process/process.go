@@ -231,7 +231,7 @@ func (pc *Process) setEntityFromTask(tasks []cfg.Task) error {
 			}
 		}
 
-		cs, err := cfg.CreateBuilderConfigFromTask(v, volumes, rule)
+		cs, err := cfg.CreateBuilderConfigFromTask(v, volumes, rule, pc.dbmsManagers)
 		if err != nil {
 			return errors.Wrap(err, "there are errors on creation config tasks")
 		}
