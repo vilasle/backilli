@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -103,7 +102,7 @@ func (d *Dump) Dump() (err error) {
 		}
 		d.PathDestination = bck
 	}
-	ls, err := ioutil.ReadDir(filepath.Dir(d.PathDestination))
+	ls, err := os.ReadDir(filepath.Dir(d.PathDestination))
 	if err != nil {
 		return err
 	}

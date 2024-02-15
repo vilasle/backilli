@@ -2,7 +2,7 @@ package entity
 
 import (
 	"fmt"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -11,18 +11,17 @@ import (
 	pgdb "github.com/vilamslep/backilli/internal/database/postgresql"
 	"github.com/vilamslep/backilli/internal/period"
 	"github.com/vilamslep/backilli/pkg/fs"
-	"github.com/vilamslep/backilli/pkg/fs/environment"
 	"github.com/vilamslep/backilli/pkg/fs/manager"
 	"github.com/vilamslep/backilli/pkg/logger"
 )
 
 type postgresEntity struct {
-	id          string
-	database    string
-	compress    bool
-	fsmngr      []manager.ManagerAtomic
-	period      period.PeriodRule
-	cnfconn     pgdb.ConnectionConfig
+	id       string
+	database string
+	compress bool
+	fsmngr   []manager.ManagerAtomic
+	period   period.PeriodRule
+	cnfconn  pgdb.ConnectionConfig
 	// backupPath  string
 	// sourceSize  int64
 	entitySize  int64
@@ -44,9 +43,11 @@ func newPsqlEntity(conf BuilderConfig) (*postgresEntity, error) {
 		period:   conf.PeriodRule,
 		keep:     conf.Keep,
 	}
+
+	u, p := conf.DatabaseManager.GetAuth()
 	e.cnfconn = pgdb.ConnectionConfig{
-		User:     environment.Get("PGUSER"),
-		Password: environment.Get("PGPASSWORD"),
+		User:     u,
+		Password: p,
 		SSlMode:  false,
 	}
 	e.fsmngr = conf.FsManagers
@@ -100,7 +101,7 @@ func (e *postgresEntity) Backup(s EntitySetting, t time.Time) {
 	e.backupSize = dump.DestinationSize
 	e.entitySize = dump.SourceSize
 
-	ls, err := ioutil.ReadDir(filepath.Dir(dump.PathDestination))
+	ls, err := os.ReadDir(filepath.Dir(dump.PathDestination))
 	if err != nil {
 		e.err = err
 		return

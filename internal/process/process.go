@@ -130,7 +130,7 @@ func InitProcess(conf cfg.ProcessConfig) (*Process, error) {
 	}
 
 	logger.Debug("init database managers")
-	if len(process.dbmsManagers) > 0 {
+	if len(conf.DatabaseManagers) > 0 {
 		if md, err := database.InitManagersFromConfig(conf.DatabaseManagers); err == nil {
 			process.dbmsManagers = md
 		} else {
