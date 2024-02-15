@@ -8,10 +8,10 @@ import (
 
 type PostgresEntity struct {
 	Id       string
-	compress   bool
-	backupPath string
-	keepCopies int
-	err        error
+	compress bool
+	// backupPath string
+	// keepCopies int
+	err error
 	period.PeriodRule
 	entitySize int64
 	backupSize int64
