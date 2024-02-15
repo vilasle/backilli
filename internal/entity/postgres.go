@@ -23,8 +23,8 @@ type postgresEntity struct {
 	fsmngr      []manager.ManagerAtomic
 	period      period.PeriodRule
 	cnfconn     pgdb.ConnectionConfig
-	backupPath  string
-	sourceSize  int64
+	// backupPath  string
+	// sourceSize  int64
 	entitySize  int64
 	backupSize  int64
 	backupFiles []string

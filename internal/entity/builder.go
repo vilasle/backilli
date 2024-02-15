@@ -3,6 +3,7 @@ package entity
 import (
 	"fmt"
 
+	"github.com/vilamslep/backilli/internal/database"
 	"github.com/vilamslep/backilli/internal/period"
 	"github.com/vilamslep/backilli/pkg/fs/manager"
 )
@@ -22,6 +23,7 @@ type BuilderConfig struct {
 	Keep          int
 	IncludeRegexp string
 	ExcludeRegexp string
+	DatabaseManager database.Manager
 	FsManagers    []manager.ManagerAtomic
 }
 

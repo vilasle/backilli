@@ -32,8 +32,8 @@ type EntityInfo interface {
 }
 
 func CreateAllEntitys(confs []BuilderConfig) ([]Entity, error) {
-	es := make([]Entity, 0)
-	errs := make([]error, 0, 0)
+	es := make([]Entity, 0, len(confs))
+	errs := make([]error, 0, len(confs))
 	for _, cf := range confs {
 		e, err := NewEntity(cf)
 		if err != nil {

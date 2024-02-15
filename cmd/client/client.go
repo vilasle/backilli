@@ -31,16 +31,17 @@ var (
 )
 
 func main() {
-
-	var conf cfg.ProcessConfig
-	var proc *ps.Process
+	var (
+		conf cfg.ProcessConfig
+		proc *ps.Process
+	)
 
 	setCliAgrs()
-
 	if showHelp {
 		pflag.Usage()
 		return
 	}
+	
 	logWriter, err := defineLogDestination()
 	if err != nil {
 		log.Println(err)
@@ -102,7 +103,6 @@ func main() {
 			logger.Error(err.Error())
 		}
 	}
-
 }
 
 func defineLogDestination() (io.WriteCloser, error) {
