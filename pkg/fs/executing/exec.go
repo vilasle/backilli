@@ -14,7 +14,7 @@ func Execute(command string,
 
 	cmd := exec.Command(command, args...)
 	cmd.Stderr = err
-	cmd.Stdout = err
+	cmd.Stdout = out
 
 	return execCommand(cmd)
 }
