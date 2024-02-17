@@ -11,6 +11,7 @@ import (
 	pgdb "github.com/vilamslep/backilli/internal/database/postgresql"
 	"github.com/vilamslep/backilli/internal/period"
 	"github.com/vilamslep/backilli/pkg/fs"
+	"github.com/vilamslep/backilli/pkg/fs/environment"
 	"github.com/vilamslep/backilli/pkg/fs/manager"
 	"github.com/vilamslep/backilli/pkg/logger"
 )
@@ -72,6 +73,14 @@ func (e *postgresEntity) Backup(s EntitySetting, t time.Time) {
 	if err != nil {
 		e.err = err
 		return
+	}
+
+	if err := environment.Set("PGUSER", e.cnfconn.User); err != nil {
+		e.err = err
+	}
+
+	if err := environment.Set("PGPASSWORD", e.cnfconn.User); err != nil {
+		e.err = err
 	}
 
 	//check that database is exist on server
