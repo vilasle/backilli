@@ -12,6 +12,7 @@ import (
 
 	pgdb "github.com/vilamslep/backilli/internal/database/postgresql"
 	"github.com/vilamslep/backilli/pkg/fs"
+	"github.com/vilamslep/backilli/pkg/fs/environment"
 	"github.com/vilamslep/backilli/pkg/fs/executing"
 )
 
@@ -45,6 +46,15 @@ func NewDump(database string, dst string, compress bool, conf pgdb.ConnectionCon
 }
 
 func (d *Dump) Dump() (err error) {
+
+	if err := environment.Set("PGUSER", d.User); err != nil {
+		return err
+	}
+
+	if err := environment.Set("PGPASSWORD", d.Password); err != nil {
+		return err
+	}
+
 	if err := d.setSourceSize(); err != nil {
 		return err
 	}
