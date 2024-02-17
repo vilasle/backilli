@@ -7,6 +7,12 @@ import (
 	"github.com/vilamslep/backilli/pkg/fs/manager"
 )
 
+
+const (
+	execStatusSuccess = "success"
+	execStatusErr = "error"
+)
+
 type Entity interface {
 	Backup(EntitySetting, time.Time)
 	CheckPeriodRules(time.Time) bool

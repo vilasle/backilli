@@ -62,9 +62,9 @@ func (e *postgresEntity) Backup(s EntitySetting, t time.Time) {
 	e.st = time.Now()
 	defer func() {
 		e.et = time.Now()
-		e.status = "success"
+		e.status = execStatusSuccess
 		if e.err != nil {
-			e.status = "errror"
+			e.status = execStatusErr
 		}
 	}()
 
