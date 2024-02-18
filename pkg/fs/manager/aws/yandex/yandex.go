@@ -18,7 +18,7 @@ import (
 
 var ErrLoadingConfiguration = fmt.Errorf("failed to load cloud configuration")
 
-var limit int64 = 536870912
+// var limit int64 = 536870912
 
 type YandexClient struct {
 	s3client   *s3.Client
@@ -63,7 +63,7 @@ func (c YandexClient) Read(path string) ([]byte, error) {
 	buf := make([]byte, int(resp.ContentLength))
 	defer resp.Body.Close()
 	var buffer bytes.Buffer
-	for true {
+	for {
 		num, rerr := resp.Body.Read(buf)
 		if num > 0 {
 			buffer.Write(buf[:num])

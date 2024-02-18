@@ -27,7 +27,9 @@ var (
 	enviroment string
 
 	//errors
-	configErr error = errors.New("does not define config file")
+	configErr        error = errors.New("does not define config file")
+	reportFormat           = "report_%s.json"
+	reportTimeLayout       = "02-01-2006"
 )
 
 func main() {
@@ -41,7 +43,7 @@ func main() {
 		pflag.Usage()
 		return
 	}
-	
+
 	logWriter, err := defineLogDestination()
 	if err != nil {
 		log.Println(err)
@@ -92,17 +94,21 @@ func main() {
 	}
 
 	r := report.InitReports(proc)
-	if content, err := json.Marshal(r); err != nil {
+	content, err := json.Marshal(r)
+	if err != nil {
 		logger.Error(err.Error())
-	} else {
-		fd, err := os.Create(fmt.Sprintf("report_%s.json", t.Format("02-01-2006")))
-		if err != nil {
-			logger.Error(err.Error())
-		}
-		if _, err := fd.Write(content); err != nil {
-			logger.Error(err.Error())
-		}
 	}
+
+	fd, err := os.Create(fmt.Sprintf(reportFormat, t.Format(reportTimeLayout)))
+
+	if err != nil {
+		logger.Error(err.Error())
+	}
+
+	if _, err := fd.Write(content); err != nil {
+		logger.Error(err.Error())
+	}
+
 }
 
 func defineLogDestination() (io.WriteCloser, error) {
