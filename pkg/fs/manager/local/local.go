@@ -3,7 +3,6 @@ package local
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"strings"
 
@@ -131,16 +130,17 @@ func (c LocalClient) Ls(path string) ([]unit.File, error) {
 		return nil, fmt.Errorf("file is not a directory")
 	}
 
-	ls, err := ioutil.ReadDir(dir)
+	ls, err := os.ReadDir(dir)
 	if err != nil {
 		return nil, err
 	}
 
 	res := make([]unit.File, len(ls))
 	for i, f := range ls {
-		res[i] = unit.File{
-			Name: f.Name(),
-			Date: f.ModTime(),
+		if info, err := f.Info(); err == nil {
+			res[i] = unit.NewFile(info.Name(), info.ModTime())
+		} else {
+			return res, err
 		}
 	}
 

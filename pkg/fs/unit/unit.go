@@ -34,6 +34,13 @@ type File struct {
 	Date       time.Time
 }
 
+func NewFile(name string, date time.Time) File {
+	return File{
+		Name: name,
+		Date: date,
+	}
+}
+
 func (f File) Close() error {
 	return f.Descriptor.Close()
 }

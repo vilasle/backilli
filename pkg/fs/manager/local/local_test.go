@@ -2,7 +2,6 @@ package local
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"testing"
 
@@ -43,7 +42,7 @@ func TestWrite(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	cnt, err := ioutil.ReadFile(pathDst)
+	cnt, err := os.ReadFile(pathDst)
 	if err != nil {
 		t.Fatal(err)
 	}

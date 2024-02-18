@@ -1,7 +1,6 @@
 package file
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -97,7 +96,7 @@ func (d *Dump) Dump() error {
 		d.PathDestination = bck
 	}
 
-	ls, err := ioutil.ReadDir(filepath.Dir(d.PathDestination))
+	ls, err := os.ReadDir(filepath.Dir(d.PathDestination))
 	if err != nil {
 		return err
 	}
@@ -129,13 +128,10 @@ func (d *Dump) Dump() error {
 func (d Dump) getFilesForBackuping(path string, tree FilesTree) (files []string, err error) {
 	for k, v := range tree {
 		if v != nil {
-			fsl, err := d.getFilesForBackuping(k, v)
-			if err != nil {
+			if fsl, err := d.getFilesForBackuping(k, v); err == nil {
+				files = append(files, fsl...)
+			} else {
 				return nil, err
-			}
-
-			for i := range fsl {
-				files = append(files, fsl[i])
 			}
 		} else {
 			if checkRegexp(d.ExcludedRegex, k) {
@@ -159,23 +155,6 @@ func (e *Dump) setEntitySize(files []string) error {
 	return nil
 }
 
-func (d *Dump) setBackupSize() error {
-	stat, err := os.Stat(d.PathDestination)
-	if err != nil {
-		return err
-	}
-	if stat.IsDir() {
-		size, err := getDirectorySize(d.PathDestination)
-		if err != nil {
-			return err
-		}
-		d.DestinationSize = size
-	} else {
-		d.DestinationSize = stat.Size()
-	}
-	return nil
-}
-
 func checkRegexp(exp *regexp.Regexp, path string) bool {
 	if exp != nil {
 		return exp.MatchString(path)
@@ -183,28 +162,8 @@ func checkRegexp(exp *regexp.Regexp, path string) bool {
 	return false
 }
 
-func getDirectorySize(path string) (int64, error) {
-	ls, err := ioutil.ReadDir(path)
-	if err != nil {
-		return 0, err
-	}
-	var summarySize int64
-	for _, stat := range ls {
-		if stat.IsDir() {
-			size, err := getDirectorySize(fs.GetFullPath("", path, stat.Name()))
-			if err != nil {
-				return 0, err
-			}
-			summarySize += size
-		} else {
-			summarySize += stat.Size()
-		}
-	}
-	return summarySize, nil
-}
-
 func generateFilesTree(path string) (FilesTree, error) {
-	ls, err := ioutil.ReadDir(path)
+	ls, err := os.ReadDir(path)
 	if err != nil {
 		return nil, err
 	}

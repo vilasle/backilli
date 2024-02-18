@@ -2,7 +2,6 @@ package entity
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -99,7 +98,7 @@ func (e *fileEntity) Backup(s EntitySetting, t time.Time) {
 
 	e.dstsize = dump.DestinationSize
 	e.srcsize = dump.SourceSize
-	ls, err := ioutil.ReadDir(filepath.Dir(dump.PathDestination))
+	ls, err := os.ReadDir(filepath.Dir(dump.PathDestination))
 	if err != nil {
 		e.err = err
 		return

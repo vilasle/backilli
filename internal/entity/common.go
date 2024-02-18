@@ -2,7 +2,6 @@ package entity
 
 import (
 	"errors"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sort"
@@ -26,7 +25,7 @@ func prepareTempPlace(tempdir string, name string) (t string, err error) {
 }
 
 func checkTemp(path string) error {
-	ls, err := ioutil.ReadDir(path)
+	ls, err := os.ReadDir(path)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return os.MkdirAll(path, os.ModePerm)
