@@ -60,14 +60,14 @@ func moveBackupToDestination(e EntityInfo, t time.Time) ([]string, error) {
 	arbck := make([]string, 0)
 
 	paths := e.BackupFilePath()
-	for i := range paths {
-		backpath := paths[i]
-		if _, err := os.Stat(backpath); err != nil {
-			return nil, err
-		}
-		dir := strings.Split(filepath.Base(backpath), ".")[0]
-		name := filepath.Base(backpath)
-		for _, mgnr := range e.FileManagers() {
+	for _, mgnr := range e.FileManagers() {
+		for i := range paths {
+			backpath := paths[i]
+			if _, err := os.Stat(backpath); err != nil {
+				return nil, err
+			}
+			dir := strings.Split(filepath.Base(backpath), ".")[0]
+			name := filepath.Base(backpath)
 			if path, err := mgnr.Write(backpath, fs.GetFullPath("", e.Id(), t.Format("02-01-2006"), dir, name)); err != nil {
 				arErr = append(arErr, err)
 			} else {
