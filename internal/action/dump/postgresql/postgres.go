@@ -10,10 +10,10 @@ import (
 	"strconv"
 	"strings"
 
-	pgdb "github.com/vilamslep/backilli/internal/database/postgresql"
-	"github.com/vilamslep/backilli/pkg/fs"
-	"github.com/vilamslep/backilli/pkg/fs/environment"
-	"github.com/vilamslep/backilli/pkg/fs/executing"
+	pgdb "github.com/vilasle/backilli/internal/database/postgresql"
+	"github.com/vilasle/backilli/pkg/fs"
+	"github.com/vilasle/backilli/pkg/fs/environment"
+	"github.com/vilasle/backilli/pkg/fs/executing"
 )
 
 var (

@@ -3,9 +3,9 @@ package entity
 import (
 	"fmt"
 
-	"github.com/vilamslep/backilli/internal/database"
-	"github.com/vilamslep/backilli/internal/period"
-	"github.com/vilamslep/backilli/pkg/fs/manager"
+	"github.com/vilasle/backilli/internal/database"
+	"github.com/vilasle/backilli/internal/period"
+	"github.com/vilasle/backilli/pkg/fs/manager"
 )
 
 const (

@@ -3,9 +3,9 @@ package process
 import (
 	"testing"
 
-	cfg "github.com/vilamslep/backilli/internal/config"
-	env "github.com/vilamslep/backilli/pkg/fs/environment"
-	"github.com/vilamslep/backilli/pkg/logger"
+	cfg "github.com/vilasle/backilli/internal/config"
+	env "github.com/vilasle/backilli/pkg/fs/environment"
+	"github.com/vilasle/backilli/pkg/logger"
 )
 
 func TestNewProcessConfig(t *testing.T) {

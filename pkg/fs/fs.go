@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/vilamslep/backilli/internal/tool/compress"
+	"github.com/vilasle/backilli/internal/tool/compress"
 )
 
 func GetSize(path string) (int64, error) {

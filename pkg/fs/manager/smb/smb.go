@@ -7,8 +7,8 @@ import (
 	"os"
 
 	smb2 "github.com/hirochachacha/go-smb2"
-	"github.com/vilamslep/backilli/pkg/fs"
-	"github.com/vilamslep/backilli/pkg/fs/unit"
+	"github.com/vilasle/backilli/pkg/fs"
+	"github.com/vilasle/backilli/pkg/fs/unit"
 )
 
 type SmbClient struct {

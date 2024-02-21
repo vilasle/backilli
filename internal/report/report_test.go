@@ -3,10 +3,10 @@ package report
 import (
 	"testing"
 
-	cfg "github.com/vilamslep/backilli/internal/config"
-	pc "github.com/vilamslep/backilli/internal/process"
-	env "github.com/vilamslep/backilli/pkg/fs/environment"
-	"github.com/vilamslep/backilli/pkg/logger"
+	cfg "github.com/vilasle/backilli/internal/config"
+	pc "github.com/vilasle/backilli/internal/process"
+	env "github.com/vilasle/backilli/pkg/fs/environment"
+	"github.com/vilasle/backilli/pkg/logger"
 )
 
 func TestInitReport(t *testing.T) {

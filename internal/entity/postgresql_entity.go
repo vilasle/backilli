@@ -3,7 +3,7 @@ package entity
 import (
 	"time"
 
-	"github.com/vilamslep/backilli/internal/period"
+	"github.com/vilasle/backilli/internal/period"
 )
 
 type PostgresEntity struct {

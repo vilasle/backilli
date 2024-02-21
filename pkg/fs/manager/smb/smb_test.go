@@ -5,8 +5,8 @@ import (
 	"strconv"
 	"testing"
 
-	env "github.com/vilamslep/backilli/pkg/fs/environment"
-	"github.com/vilamslep/backilli/pkg/fs/unit"
+	env "github.com/vilasle/backilli/pkg/fs/environment"
+	"github.com/vilasle/backilli/pkg/fs/unit"
 )
 
 func TestWrite(t *testing.T) {

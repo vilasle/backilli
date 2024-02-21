@@ -2,7 +2,7 @@ package postgresql
 
 import(
 	"bytes"
-	"github.com/vilamslep/backilli/pkg/fs/executing"
+	"github.com/vilasle/backilli/pkg/fs/executing"
 )
 
 func Dump(db string, dst string, excludedTables []string) (stdout bytes.Buffer, stderr bytes.Buffer, err error) {

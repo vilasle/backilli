@@ -1,4 +1,4 @@
-module github.com/vilamslep/backilli
+module github.com/vilasle/backilli
 
 go 1.21
 

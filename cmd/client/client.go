@@ -14,10 +14,10 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/spf13/pflag"
-	cfg "github.com/vilamslep/backilli/internal/config"
-	ps "github.com/vilamslep/backilli/internal/process"
-	"github.com/vilamslep/backilli/internal/report"
-	"github.com/vilamslep/backilli/pkg/logger"
+	cfg "github.com/vilasle/backilli/internal/config"
+	ps "github.com/vilasle/backilli/internal/process"
+	"github.com/vilasle/backilli/internal/report"
+	"github.com/vilasle/backilli/pkg/logger"
 )
 
 var (

@@ -7,7 +7,7 @@ import (
 
 	_ "github.com/lib/pq"
 	"github.com/pkg/errors"
-	"github.com/vilamslep/backilli/pkg/fs/executing"
+	"github.com/vilasle/backilli/pkg/fs/executing"
 )
 
 func Databases(conf ConnectionConfig, dbsFilter []string) ([]Database, error) {

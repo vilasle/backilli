@@ -9,11 +9,11 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"github.com/vilamslep/backilli/internal/action/dump/file"
-	"github.com/vilamslep/backilli/internal/period"
-	"github.com/vilamslep/backilli/pkg/fs"
-	"github.com/vilamslep/backilli/pkg/fs/manager"
-	"github.com/vilamslep/backilli/pkg/logger"
+	"github.com/vilasle/backilli/internal/action/dump/file"
+	"github.com/vilasle/backilli/internal/period"
+	"github.com/vilasle/backilli/pkg/fs"
+	"github.com/vilasle/backilli/pkg/fs/manager"
+	"github.com/vilasle/backilli/pkg/logger"
 )
 
 type fileEntity struct {

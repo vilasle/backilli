@@ -3,7 +3,7 @@ package process
 import (
 	"time"
 
-	"github.com/vilamslep/backilli/internal/entity"
+	"github.com/vilasle/backilli/internal/entity"
 )
 
 type ProcessStat struct {

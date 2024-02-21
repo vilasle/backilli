@@ -6,8 +6,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/vilamslep/backilli/pkg/fs"
-	"github.com/vilamslep/backilli/pkg/fs/unit"
+	"github.com/vilasle/backilli/pkg/fs"
+	"github.com/vilasle/backilli/pkg/fs/unit"
 )
 
 type LocalClient struct {

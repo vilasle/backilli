@@ -7,9 +7,9 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	"github.com/vilamslep/backilli/pkg/fs"
-	"github.com/vilamslep/backilli/pkg/fs/manager/local"
-	"github.com/vilamslep/backilli/pkg/fs/unit"
+	"github.com/vilasle/backilli/pkg/fs"
+	"github.com/vilasle/backilli/pkg/fs/manager/local"
+	"github.com/vilasle/backilli/pkg/fs/unit"
 )
 
 type FilesTree map[string]FilesTree

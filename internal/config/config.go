@@ -4,11 +4,11 @@ import (
 	"os"
 
 	"github.com/pkg/errors"
-	"github.com/vilamslep/backilli/internal/database"
-	"github.com/vilamslep/backilli/internal/entity"
-	"github.com/vilamslep/backilli/internal/period"
-	env "github.com/vilamslep/backilli/pkg/fs/environment"
-	"github.com/vilamslep/backilli/pkg/fs/manager"
+	"github.com/vilasle/backilli/internal/database"
+	"github.com/vilasle/backilli/internal/entity"
+	"github.com/vilasle/backilli/internal/period"
+	env "github.com/vilasle/backilli/pkg/fs/environment"
+	"github.com/vilasle/backilli/pkg/fs/manager"
 	"gopkg.in/yaml.v2"
 )
 

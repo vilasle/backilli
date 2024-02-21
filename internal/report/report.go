@@ -3,7 +3,7 @@ package report
 import (
 	"time"
 
-	ps "github.com/vilamslep/backilli/internal/process"
+	ps "github.com/vilasle/backilli/internal/process"
 )
 
 type Reports []Report

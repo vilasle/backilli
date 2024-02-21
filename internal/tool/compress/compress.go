@@ -3,7 +3,7 @@ package compress
 import (
 	"os"
 
-	"github.com/vilamslep/backilli/pkg/fs/executing"
+	"github.com/vilasle/backilli/pkg/fs/executing"
 )
 
 var Compressing string

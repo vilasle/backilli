@@ -11,9 +11,9 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
-	"github.com/vilamslep/backilli/pkg/fs"
-	env "github.com/vilamslep/backilli/pkg/fs/environment"
-	"github.com/vilamslep/backilli/pkg/fs/unit"
+	"github.com/vilasle/backilli/pkg/fs"
+	env "github.com/vilasle/backilli/pkg/fs/environment"
+	"github.com/vilasle/backilli/pkg/fs/unit"
 )
 
 var ErrLoadingConfiguration = fmt.Errorf("failed to load cloud configuration")

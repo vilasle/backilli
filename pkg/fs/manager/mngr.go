@@ -3,10 +3,10 @@ package manager
 import (
 	"fmt"
 
-	"github.com/vilamslep/backilli/pkg/fs/manager/aws/yandex"
-	"github.com/vilamslep/backilli/pkg/fs/manager/local"
-	"github.com/vilamslep/backilli/pkg/fs/manager/smb"
-	"github.com/vilamslep/backilli/pkg/fs/unit"
+	"github.com/vilasle/backilli/pkg/fs/manager/aws/yandex"
+	"github.com/vilasle/backilli/pkg/fs/manager/local"
+	"github.com/vilasle/backilli/pkg/fs/manager/smb"
+	"github.com/vilasle/backilli/pkg/fs/unit"
 )
 
 const (
