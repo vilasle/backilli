@@ -10,6 +10,7 @@ import (
 	"github.com/vilasle/backilli/pkg/fs"
 	"github.com/vilasle/backilli/pkg/fs/manager/local"
 	"github.com/vilasle/backilli/pkg/fs/unit"
+	"github.com/vilasle/backilli/pkg/logger"
 )
 
 type FilesTree map[string]FilesTree
@@ -47,7 +48,6 @@ func (d *Dump) Dump() error {
 	if files, err = d.getFilesForBackuping(d.PathSource, tree); err != nil {
 		return errors.Wrap(err, "checking files for backuping")
 	}
-
 	d.setEntitySize(files)
 
 	stat, err := os.Stat(d.PathDestination)
@@ -64,6 +64,7 @@ func (d *Dump) Dump() error {
 
 	c := local.NewClient(unit.ClientConfig{Root: workDirectory})
 
+	logger.Debug("start copping", "files", files)
 	for i := range files {
 		r := strings.Split(d.PathSource, string(filepath.Separator))
 		rf := strings.Split(files[i], string(filepath.Separator))
@@ -87,13 +88,17 @@ func (d *Dump) Dump() error {
 			return errors.Wrapf(err, "does not write file '%s'", ft)
 		}
 	}
+	logger.Debug("finish copping", "files", files)
 
 	if d.Compress {
-		bck, err := fs.CompressDir(workDirectory, d.PathDestination)
-		if err != nil {
+		logger.Debug("start compressing", "directory", workDirectory)
+		var bck string
+		if bck, err = fs.CompressDir(workDirectory, d.PathDestination); err != nil {
 			return errors.Wrap(err, "compressing failed")
 		}
 		d.PathDestination = bck
+		
+		logger.Debug("finish compressing", "destFile", bck)
 	}
 
 	ls, err := os.ReadDir(filepath.Dir(d.PathDestination))

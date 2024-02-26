@@ -11,6 +11,7 @@ import (
 	"github.com/vilasle/backilli/pkg/fs"
 	"github.com/vilasle/backilli/pkg/fs/manager/local"
 	"github.com/vilasle/backilli/pkg/fs/unit"
+	"github.com/vilasle/backilli/pkg/logger"
 )
 
 func prepareTempPlace(tempdir string, name string) (t string, err error) {
@@ -60,6 +61,7 @@ func moveBackupToDestination(e EntityInfo, t time.Time) ([]string, error) {
 	arbck := make([]string, 0)
 
 	paths := e.BackupFilePath()
+	logger.Debug("moving backups to destination")
 	for _, mgnr := range e.FileManagers() {
 		for i := range paths {
 			backpath := paths[i]

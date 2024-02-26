@@ -105,7 +105,7 @@ func (ps *Process) Entityes() []entity.Entity {
 func InitProcess(conf cfg.ProcessConfig) (*Process, error) {
 	process := Process{}
 
-	logger.Debug("load enviroment vars")
+	logger.Debug("loading enviroment vars")
 	if err := conf.SetEnviroment(); err != nil {
 		return nil, errors.Wrap(err, "could not set enviroment vars")
 	}
@@ -116,20 +116,20 @@ func InitProcess(conf cfg.ProcessConfig) (*Process, error) {
 
 	process.catalogs = conf.Catalogs
 
-	logger.Debug("prepare config for initing volumes")
+	logger.Debug("preparing config for initing volumes")
 	cfgs, err := convertConfigForFSManagers(conf.Volumes)
 	if err != nil {
 		return nil, err
 	}
 
-	logger.Debug("init volumes")
+	logger.Debug("initting volumes")
 	if ms, err := manager.InitManagersFromConfigs(cfgs); err == nil {
 		process.volumes = ms
 	} else {
 		return nil, errors.Wrap(err, "could not init volumes")
 	}
 
-	logger.Debug("init database managers")
+	logger.Debug("initting database managers")
 	if len(conf.DatabaseManagers) > 0 {
 		if md, err := database.InitManagersFromConfig(conf.DatabaseManagers); err == nil {
 			process.dbmsManagers = md
@@ -179,20 +179,29 @@ func (ps *Process) Run() {
 	ps.t = t
 	s := entity.EntitySetting{Tempdir: ps.catalogs.Transitory}
 	for _, ent := range ps.entityes {
+		logger.Reset()
+		logger.With("task", ent) 
 		logger.Info("checking period rules")
 		if !ent.CheckPeriodRules(t) {
-			logger.Infof("checking did not executed. task will be skip. %v", ent)
+			logger.Info("checking did not executed. task will be skip")
 			continue
 		}
 
-		logger.Infof("run %v backup", ent)
+		startTime := time.Now()
+		logger.Info("run backup", "task", ent)
 		if ent.Backup(s, t); ent.Err() != nil {
-			logger.Infof("an error occurred during backup %v", ent.Err())
-			continue
+			logger.Error("an error occurred during backup", 
+				"error", ent.Err(), 
+				"time difference", diffWithNow(startTime))
 		} else {
-			logger.Infof("entity was finished success %v", ent)
+			logger.Info("entity was finished success")
 		}
 	}
+	logger.Reset()
+}
+
+func diffWithNow(t1 time.Time) time.Duration {
+	return time.Since(t1) 
 }
 
 func (pc *Process) Close() error {

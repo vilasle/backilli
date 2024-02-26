@@ -24,7 +24,7 @@ func TestInitProcess(t *testing.T) {
 	if err := env.LoadEnvfile("test.env"); err != nil {
 		t.Fatal(err)
 	}
-	logger.InitLogger("local", nil)
+	logger.Init("local", nil)
 	path := env.Get("CONFIG")
 
 	conf, err := cfg.NewProcessConfig(path)

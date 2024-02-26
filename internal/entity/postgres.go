@@ -73,6 +73,7 @@ func (e *postgresEntity) Backup(s EntitySetting, t time.Time) {
 		e.err = err
 		return
 	}
+	logger.Debug("temp place", "temp", temp)
 
 	//check that database is exist on server
 	d, err := pgdb.Databases(e.cnfconn, []string{e.database})
@@ -93,11 +94,13 @@ func (e *postgresEntity) Backup(s EntitySetting, t time.Time) {
 	}
 
 	dump := pgdump.NewDump(e.database, temp, e.compress, e.cnfconn, excludeTables...)
+	logger.Debug("starting dumping", "dump", dump)
 	if err := dump.Dump(); err != nil {
 		e.err = err
 		return
 	}
-
+	logger.Debug("finish dumping", "dump", dump)
+	
 	e.backupSize = dump.DestinationSize
 	e.entitySize = dump.SourceSize
 
@@ -138,7 +141,7 @@ func (e *postgresEntity) clearOldCopies() {
 		e.err = err
 	} else {
 		for _, v := range rmd {
-			logger.Infof("was removed file %s", v)
+			logger.Info("removed", "file", v)
 		}
 	}
 }

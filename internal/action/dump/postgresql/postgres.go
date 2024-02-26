@@ -14,6 +14,7 @@ import (
 	"github.com/vilasle/backilli/pkg/fs"
 	"github.com/vilasle/backilli/pkg/fs/environment"
 	"github.com/vilasle/backilli/pkg/fs/executing"
+	"github.com/vilasle/backilli/pkg/logger"
 )
 
 var (
@@ -77,6 +78,7 @@ func (d *Dump) Dump() (err error) {
 
 	excludingArgs(args, d.ExcludedTable)
 
+	logger.Debug("start logical dumping", "exe", PG_DUMP, "args", args)
 	if err := executing.Execute(PG_DUMP, &d.stdout, &d.stderr, args...); err != nil {
 		if err != nil {
 			return fmt.Errorf(d.stderr.String(), err)
@@ -86,7 +88,9 @@ func (d *Dump) Dump() (err error) {
 			return err
 		}
 	}
+	logger.Debug("finish logical dumping")
 
+	logger.Debug("start binary copping", "tables", d.ExcludedTable)
 	if len(d.ExcludedTable) > 0 {
 		binarybc := fs.GetFullPath("", d.PathDestination, "binary")
 		if _, err := os.Stat(binarybc); os.IsNotExist(err) {
@@ -104,13 +108,17 @@ func (d *Dump) Dump() (err error) {
 			}
 		}
 	}
+	logger.Debug("finish binary copping", "tables", d.ExcludedTable)
 
-	if d.Compress {
+	if d.Compress {	
+		logger.Debug("start compressing", "directory", workDirectory)
 		bck, err := fs.CompressDir(workDirectory, d.PathDestination)
 		if err != nil {
 			return err
 		}
 		d.PathDestination = bck
+
+		logger.Debug("finish compressing", "destFile", bck)
 	}
 	ls, err := os.ReadDir(filepath.Dir(d.PathDestination))
 	if err != nil {

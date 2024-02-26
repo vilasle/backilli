@@ -83,19 +83,22 @@ func (e *fileEntity) Backup(s EntitySetting, t time.Time) {
 		e.err = err
 		return
 	}
-
+	
 	temp, err := prepareTempPlace(s.Tempdir, stat.Name())
 	if err != nil {
 		e.err = err
 		return
 	}
+	logger.Debug("temp place", "temp", temp)
 
 	dump := file.NewDump(e.srcfl, temp, e.iregexp, e.eregexp, e.compress)
+	logger.Debug("starting dumping", "dump", dump)
 	if err := dump.Dump(); err != nil {
 		e.err = err
 		return
 	}
-
+	logger.Debug("finish dumping", "dump", dump)
+	
 	e.dstsize = dump.DestinationSize
 	e.srcsize = dump.SourceSize
 	ls, err := os.ReadDir(filepath.Dir(dump.PathDestination))
@@ -194,7 +197,7 @@ func (e *fileEntity) clearOldCopies() {
 		e.err = err
 	} else {
 		for _, v := range rmd {
-			logger.Infof("was removed file %s", v)
+			logger.Info("removed", "file", v)
 		}
 	}
 }

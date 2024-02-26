@@ -50,28 +50,28 @@ func main() {
 	}
 	defer logWriter.Close()
 
-	logger.InitLogger(enviroment, logWriter)
+	logger.Init(enviroment, logWriter)
 
 	if err := checkArgs(); err != nil {
-		logger.Error(err.Error())
+		logger.Error("checking required arguments", "error", err.Error())
 		os.Exit(1)
 	}
 
 	_, err = os.Stat(configPath)
 	if os.IsNotExist(err) {
-		logger.Errorf("config file '%s' is not exists", configPath)
+		logger.Error("config is not exists", "path", configPath)
 		os.Exit(2)
 	}
 
-	logger.Infof("init procces from %s", configPath)
+	logger.Info("initing procces", "path", configPath)
 
 	conf, err = cfg.NewProcessConfig(configPath)
 	if err != nil {
-		logger.Error("could not read config file", err)
+		logger.Error("could not read config file", "error", err)
 		os.Exit(3)
 	}
 
-	logger.Debugf("config was read. Result = %v", conf)
+	logger.Debug("config was read", "config", conf)
 
 	proc, err = ps.InitProcess(conf)
 	if err != nil {
@@ -89,24 +89,24 @@ func main() {
 
 	proc.Run()
 	if err := proc.Close(); err != nil {
-		logger.Error("could not finish process", err)
+		logger.Error("could not finish process", "error", err)
 		os.Exit(5)
 	}
 
 	r := report.InitReports(proc)
 	content, err := json.Marshal(r)
 	if err != nil {
-		logger.Error(err.Error())
+		logger.Error("marshalling report", "error", err)
 	}
 
-	fd, err := os.Create(fmt.Sprintf(reportFormat, t.Format(reportTimeLayout)))
-
+	reportFile := fmt.Sprintf(reportFormat, t.Format(reportTimeLayout))
+	fd, err := os.Create(reportFile)
 	if err != nil {
-		logger.Error(err.Error())
+		logger.Error("creating report file", "file", reportFile, "error", err)
 	}
 
 	if _, err := fd.Write(content); err != nil {
-		logger.Error(err.Error())
+		logger.Error("writting report", "file", reportFile, "error", err)
 	}
 
 }
