@@ -58,7 +58,7 @@ func (h *prettyHandler) Handle(ctx context.Context, r slog.Record) error {
 		return err
 	}
 
-	ts := r.Time.Format("[15:04:05 01-02-2006]")
+	ts := r.Time.Format("[01-02-2006 15:04:05]")
 	msg := paint(r.Message, cyan)
 
 	h.l.Println(ts, level, msg, paint(string(b), white))
