@@ -1,7 +1,9 @@
 package entity
 
 import (
+	"bytes"
 	"errors"
+	"io"
 	"os"
 	"path/filepath"
 	"sort"
@@ -12,6 +14,10 @@ import (
 	"github.com/vilasle/backilli/pkg/fs/manager/local"
 	"github.com/vilasle/backilli/pkg/fs/unit"
 	"github.com/vilasle/backilli/pkg/logger"
+)
+
+const (
+	packSize = 4
 )
 
 func prepareTempPlace(tempdir string, name string) (t string, err error) {
@@ -62,19 +68,45 @@ func moveBackupToDestination(e EntityInfo, t time.Time) ([]string, error) {
 
 	paths := e.BackupFilePath()
 	logger.Debug("moving backups to destination")
-	for _, mgnr := range e.FileManagers() {
-		for i := range paths {
-			backpath := paths[i]
-			if _, err := os.Stat(backpath); err != nil {
-				return nil, err
-			}
-			dir := strings.Split(filepath.Base(backpath), ".")[0]
-			name := filepath.Base(backpath)
-			if path, err := mgnr.Write(backpath, fs.GetFullPath("", e.Id(), t.Format("02-01-2006"), dir, name)); err != nil {
+
+	// pack := make([]string, 0, packSize)
+
+	// //we will read files im memory and run goroni
+	// for i := 0; i < (len(paths)/cap(pack) + 1); i++ {
+
+	// 	pack = pack[0:0]
+	// }
+
+	for i := range paths {
+		backpath := paths[i]
+		if _, err := os.Stat(backpath); os.IsNotExist(err) {
+			return nil, err
+		}
+
+		file, err := putFileIntoMemory(backpath)
+		if err != nil {
+			return nil, err
+		}
+
+		dir := strings.Split(filepath.Base(backpath), ".")[0]
+		name := filepath.Base(backpath)
+		for _, mgnr := range e.FileManagers() {
+			t := time.Now()
+			buf := bytes.NewBuffer(file)
+			dest := fs.GetFullPath("", e.Id(), t.Format("02-01-2006"), dir, name)
+
+			logger.Debug("start moving to target manager", "manager", mgnr.Description(), "dest", dest)
+
+			if path, err := mgnr.Write(buf, dest); err != nil {
 				arErr = append(arErr, err)
 			} else {
 				arbck = append(arbck, path)
 			}
+
+			logger.Debug("finish moving to target manager",
+				"manager", mgnr.Description(),
+				"dest", dest,
+				"diff", time.Since(t).String())
 		}
 	}
 	if len(arErr) > 0 {
@@ -82,6 +114,38 @@ func moveBackupToDestination(e EntityInfo, t time.Time) ([]string, error) {
 	} else {
 		return arbck, nil
 	}
+}
+
+func putFileIntoMemory(path string) ([]byte, error) {
+	var (
+		err  error
+		fd   *os.File
+		stat os.FileInfo
+	)
+
+	fd, err = os.OpenFile(path, os.O_RDONLY, os.ModePerm)
+	if err != nil {
+		return nil, err
+	}
+	defer fd.Close()
+
+	stat, err = fd.Stat()
+	if err != nil {
+		return nil, err
+	}
+	file := make([]byte, stat.Size())
+
+	_, err = fd.Read(file)
+	if err != nil {
+		return nil, err
+	}
+
+	if err == io.EOF {
+		return file, nil
+	}
+
+	return nil, err
+
 }
 
 func ClearOldCopies(e EntityInfo, keep int) ([]string, error) {

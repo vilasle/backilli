@@ -1,6 +1,7 @@
 package local
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"os"
@@ -54,7 +55,7 @@ func (c LocalClient) Read(path string) ([]byte, error) {
 	return res, nil
 }
 
-func (c LocalClient) Write(src string, dst string) (string, error) {
+func (c LocalClient) Write(rd *bytes.Buffer, dst string) (string, error) {
 	_, err := os.Stat(c.root)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -91,12 +92,6 @@ func (c LocalClient) Write(src string, dst string) (string, error) {
 		return "", err
 	}
 	defer fd.Close()
-
-	rd, err := os.OpenFile(src, os.O_RDONLY, os.ModePerm)
-	if err != nil {
-		return "", err
-	}
-	defer rd.Close()
 
 	var bufferOffset int64 = 1024 * 16
 
@@ -158,4 +153,11 @@ func (c LocalClient) Remove(path string) error {
 
 func (c LocalClient) Close() error {
 	return nil
+}
+
+func (c LocalClient) Description() map[string]any {
+	res := make(map[string]any)
+	res["name"] = "local"
+	res["root"] = c.root
+	return res
 }

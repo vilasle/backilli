@@ -39,7 +39,7 @@ func CompressDir(dir string, destination string) (string, error) {
 func GetFullPath(sep string, path ...string) string {
 	if sep == "" {
 		sep = string(filepath.Separator)
-	}
+	}	
 	return strings.Join(path, sep)
 }
 

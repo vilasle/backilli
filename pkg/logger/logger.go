@@ -42,14 +42,6 @@ func Init(enviroment string, wrt io.Writer) {
 	currentLogger = logger
 }
 
-func With(args ...any) {
-	currentLogger = logger.With(args...)
-}
-
-func Reset() {
-	currentLogger = nil
-}
-
 func clearColorIfWindows() {
 	if runtime.GOOS == "windows" {
 		endcollor, magenta, blue, yellow, red, cyan, white =

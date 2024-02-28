@@ -1,6 +1,7 @@
 package file
 
 import (
+	"bytes"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -83,8 +84,13 @@ func (d *Dump) Dump() error {
 		}
 
 		ft := strings.Join(rf[len(r):], string(filepath.Separator))
+		content, err := os.ReadFile(files[i])
+		if err != nil {
+			return err
+		}
 
-		if _, err := c.Write(files[i], ft); err != nil {
+		buf := bytes.NewBuffer(content)
+		if _, err := c.Write(buf, ft); err != nil {
 			return errors.Wrapf(err, "does not write file '%s'", ft)
 		}
 	}
@@ -97,7 +103,7 @@ func (d *Dump) Dump() error {
 			return errors.Wrap(err, "compressing failed")
 		}
 		d.PathDestination = bck
-		
+
 		logger.Debug("finish compressing", "destFile", bck)
 	}
 

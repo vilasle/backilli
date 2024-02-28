@@ -13,4 +13,4 @@
 #docker images for testing
 images 
 bin
-
+*.json

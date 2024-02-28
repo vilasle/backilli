@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"os"
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -74,26 +73,11 @@ func (c YandexClient) Read(path string) ([]byte, error) {
 	return buffer.Bytes(), nil
 }
 
-func (c YandexClient) Write(src string, dst string) (string, error) {
-	_, err := os.Stat(src)
-	if err != nil {
-		return "", err
-	}
-	return c.put(src, dst)
+func (c YandexClient) Write(buf *bytes.Buffer, dst string) (string, error) {
+	return c.put(buf, dst)
 }
 
-func (c YandexClient) put(src string, dst string) (string, error) {
-	fd, err := os.Open(src)
-	if err != nil {
-		return "", err
-	}
-	defer fd.Close()
-
-	stat, err := fd.Stat()
-	if err != nil {
-		return "", err
-	}
-
+func (c YandexClient) put(buf *bytes.Buffer, dst string) (string, error) {
 	cloudRoot := c.cloudRoot
 	if cloudRoot[len(cloudRoot)-1] == 0x5c ||
 		cloudRoot[len(cloudRoot)-1] == 0x2f {
@@ -107,11 +91,11 @@ func (c YandexClient) put(src string, dst string) (string, error) {
 	object := &s3.PutObjectInput{
 		Bucket:        aws.String(c.bucketName),
 		Key:           aws.String(yapath),
-		Body:          fd,
-		ContentLength: stat.Size(),
+		Body:          buf,
+		ContentLength: int64(buf.Len()),
 	}
 
-	if _, err = c.s3client.PutObject(context.Background(), object); err != nil {
+	if _, err := c.s3client.PutObject(context.Background(), object); err != nil {
 		return "", err
 	} else {
 		return bckpath, nil
@@ -205,4 +189,13 @@ func yandexResolver(service string, region string, options ...interface{}) (aws.
 		}, nil
 	}
 	return aws.Endpoint{}, fmt.Errorf("unknown endpoint requested")
+}
+
+func (c YandexClient) Description() map[string]any {
+	res := make(map[string]any)
+	res["name"] = "yandex.cloud"
+	res["root"] = c.cloudRoot
+	res["bucket"] = c.bucketName
+
+	return res
 }

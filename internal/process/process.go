@@ -2,6 +2,7 @@ package process
 
 import (
 	"bytes"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -178,30 +179,30 @@ func (ps *Process) Run() {
 	t := time.Now()
 	ps.t = t
 	s := entity.EntitySetting{Tempdir: ps.catalogs.Transitory}
+
 	for _, ent := range ps.entityes {
-		logger.Reset()
-		logger.With("task", ent) 
-		logger.Info("checking period rules")
+		logger.Info("checking period rules", "task", ent)
 		if !ent.CheckPeriodRules(t) {
-			logger.Info("checking did not executed. task will be skip")
+			logger.Info("checking did not executed. task will be skip", "task", ent)
 			continue
 		}
 
 		startTime := time.Now()
 		logger.Info("run backup", "task", ent)
 		if ent.Backup(s, t); ent.Err() != nil {
-			logger.Error("an error occurred during backup", 
-				"error", ent.Err(), 
-				"time difference", diffWithNow(startTime))
+			logger.Error("an error occurred during backup",
+				"task", ent,
+				"error", ent.Err(),
+				"time difference", diffWithNow(startTime).String())
 		} else {
-			logger.Info("entity was finished success")
+			logger.Info("entity was finished success", "task", ent)
 		}
+		runtime.GC()
 	}
-	logger.Reset()
 }
 
 func diffWithNow(t1 time.Time) time.Duration {
-	return time.Since(t1) 
+	return time.Since(t1)
 }
 
 func (pc *Process) Close() error {

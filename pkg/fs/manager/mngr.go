@@ -1,6 +1,7 @@
 package manager
 
 import (
+	"bytes"
 	"fmt"
 
 	"github.com/vilasle/backilli/pkg/fs/manager/aws/yandex"
@@ -17,10 +18,11 @@ const (
 
 type ManagerAtomic interface {
 	Read(string) ([]byte, error)
-	Write(string, string) (string, error)
+	Write(*bytes.Buffer, string) (string, error)
 	Ls(string) ([]unit.File, error)
 	Remove(string) error
 	Close() error
+	Description() map[string]any
 }
 
 func NewManager(conf unit.ClientConfig) (ManagerAtomic, error) {

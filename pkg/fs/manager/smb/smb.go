@@ -1,6 +1,7 @@
 package smb
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"net"
@@ -82,7 +83,7 @@ func (c SmbClient) Read(path string) ([]byte, error) {
 	return res, nil
 }
 
-func (c SmbClient) Write(src string, dst string) (string, error) {
+func (c SmbClient) Write(rd *bytes.Buffer, dst string) (string, error) {
 	fpf := fs.GetFullPath(string(smb2.PathSeparator), c.root, dst)
 	fpd := fs.Dir(fpf)
 	
@@ -102,12 +103,6 @@ func (c SmbClient) Write(src string, dst string) (string, error) {
 		return "", err
 	}
 	defer wd.Close()
-
-	rd, err := os.OpenFile(src, os.O_RDONLY, os.ModePerm)
-	if err != nil {
-		return "", err
-	}
-	defer rd.Close()
 
 	var bufferOffset int64 = 1024 * 64
 	buf := make([]byte, bufferOffset)
@@ -184,4 +179,12 @@ func (c SmbClient) createFile(path string) (*unit.File, error) {
 
 func (c SmbClient) mkdirAll(path string) error {
 	return c.mountPoint.MkdirAll(path, os.ModeDir)
+}
+
+func (c SmbClient) Description() map[string]any {
+	res := make(map[string]any)
+	res["name"] = "smb"
+	res["root"] = c.root
+	res["mountPoint"] = c.mountPoint
+	return res
 }
