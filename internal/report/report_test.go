@@ -26,5 +26,5 @@ func TestInitReport(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_ = InitReports(proc)
+	_ = InitReports(proc.Stat())
 }

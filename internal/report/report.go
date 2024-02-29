@@ -21,9 +21,8 @@ type Report struct {
 	Details    string    `json:"details"`
 }
 
-func InitReports(process *ps.Process) Reports {
+func InitReports(stat *ps.ProcessStat) Reports {
 	rps := make(Reports, 0)
-	stat := process.Stat()
 	for _, e := range stat.Entityes() {
 		r := Report{
 			Date:       stat.Date,
