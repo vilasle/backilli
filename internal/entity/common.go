@@ -104,46 +104,6 @@ func moveBackupToDestination(e EntityInfo, t time.Time) ([]string, error) {
 
 	}
 
-	// pack := make([]string, 0, packSize)
-
-	// //we will read files im memory and run goroni
-	// for i := 0; i < (len(paths)/cap(pack) + 1); i++ {
-
-	// 	pack = pack[0:0]
-	// }
-
-	// for i := range paths {
-	// 	backpath := paths[i]
-	// 	if _, err := os.Stat(backpath); os.IsNotExist(err) {
-	// 		return nil, err
-	// 	}
-
-	// 	file, err := putFileIntoMemory(backpath)
-	// 	if err != nil {
-	// 		return nil, err
-	// 	}
-
-	// 	dir := strings.Split(filepath.Base(backpath), ".")[0]
-	// 	name := filepath.Base(backpath)
-	// 	for _, mgnr := range e.FileManagers() {
-	// 		t := time.Now()
-	// 		buf := bytes.NewBuffer(file)
-	// 		dest := fs.GetFullPath("", e.Id(), t.Format("02-01-2006"), dir, name)
-
-	// 		logger.Debug("start moving to target manager", "manager", mgnr.Description(), "dest", dest)
-
-	// 		if path, err := mgnr.Write(buf, dest); err != nil {
-	// 			arErr = append(arErr, err)
-	// 		} else {
-	// 			arbck = append(arbck, path)
-	// 		}
-
-	// 		logger.Debug("finish moving to target manager",
-	// 			"manager", mgnr.Description(),
-	// 			"dest", dest,
-	// 			"diff", time.Since(t).String())
-	// 	}
-	// }
 	if len(arErr) > 0 {
 		return nil, errors.Join(arErr...)
 	} else {
@@ -231,7 +191,7 @@ func putFileIntoMemory(path string) ([]byte, error) {
 		return file, nil
 	}
 
-	return nil, err
+	return file, err
 }
 
 func ClearOldCopies(e EntityInfo, keep int) ([]string, error) {

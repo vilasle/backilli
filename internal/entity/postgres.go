@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 
@@ -130,6 +131,7 @@ func (e *postgresEntity) Backup(s EntitySetting, t time.Time) {
 		e.err = err
 		return
 	}
+	runtime.GC()
 	e.clearOldCopies()
 }
 

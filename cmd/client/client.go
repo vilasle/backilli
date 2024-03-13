@@ -35,10 +35,6 @@ func main() {
 	defer clis.close()
 
 	startApplication(clis)
-
-	logger.Init(clis.enviroment, clis.output())
-
-	startApplication(clis)
 }
 
 func startApplication(clis cliSetting) {
@@ -47,6 +43,8 @@ func startApplication(clis cliSetting) {
 		ps   *p.Process
 		err  error
 	)
+
+	logger.Init(clis.enviroment, clis.output())
 
 	logger.Info("initing procces", "path", clis.configPath)
 
