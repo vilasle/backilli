@@ -72,15 +72,25 @@ func main() {
 	}
 
 	//flush to stdout
+	hasError := false
 	for _, r := range results {
 		if !r.HasError {
 			continue
 		}
+		hasError = true
 		fmt.Printf("\nreport %s has errors:\n", r.Date.Format("02-01-2006"))
 		for _, err := range r.Errors {
 			fmt.Printf("\t%s\n", err)
 		}
 	}
+
+	if not(hasError) {
+		fmt.Println("\nreports do not have errors")
+	}
+}
+
+func not(exp bool) bool {
+	return !exp
 }
 
 func getPathOfReports(reportPath string) ([]string, error) {
