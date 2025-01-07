@@ -2,27 +2,28 @@ package environment
 
 import (
 	"bufio"
+	"fmt"
 	"os"
 	"strings"
 
-	"github.com/pkg/errors"
+	"errors"
 )
 
-func LoadEnvfile(path string) error {
+func LoadEnvFile(path string) error {
 	f, err := os.Open(path)
 	if err != nil {
-		return errors.Wrapf(err, "could not open env file %s", path)
+		return errors.Join(err, fmt.Errorf("could not open env file %s", path))
 	}
 	defer f.Close()
 
 	sc := bufio.NewScanner(f)
 	for sc.Scan() {
-		envar := strings.Split(sc.Text(), "=")
-		if len(envar) < 2 {
+		env := strings.Split(sc.Text(), "=")
+		if len(env) < 2 {
 			continue
 		}
-		if err := Set(envar[0], envar[1]); err != nil {
-			return errors.Wrapf(err, "an error in setting up enviroment var %s", sc.Text())
+		if err := Set(env[0], env[1]); err != nil {
+			return errors.Join(err, fmt.Errorf("an error in setting up environment var %s", sc.Text()))
 		} 
 	}
 	return sc.Err()

@@ -4,7 +4,8 @@ import (
 	"bytes"
 	"fmt"
 
-	"github.com/pkg/errors"
+	"errors"
+
 	"github.com/vilasle/backilli/pkg/fs/executing"
 )
 
@@ -18,7 +19,8 @@ func CopyBinary(db string, src string, dst string) (err error) {
 	command := fmt.Sprintf("\\COPY %s TO '%s' WITH BINARY;", src, dst)
 	args := []string{"--dbname", db, "--command", command}
 	if err := executing.Execute(PSQL, nil, &stderr, args...); err != nil {
-		return errors.Wrapf(err, "binary copying is failed. Command %s. \n stderr: %s", command, stderr.String())
+		return errors.Join(err,
+			fmt.Errorf("binary copying is failed. Command %s. stderr: %s", command, stderr.String()))
 	}
 	return err
 }

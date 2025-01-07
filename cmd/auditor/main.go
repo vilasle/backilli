@@ -2,13 +2,13 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/spf13/pflag"
 	"github.com/vilasle/backilli/internal/report"
 )
@@ -97,22 +97,22 @@ func getPathOfReports(reportPath string) ([]string, error) {
 	s, err := os.Stat(reportPath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return nil, errors.Wrapf(err, "directory %s is not exists", reportPath)
+			return nil, errors.Join(err, fmt.Errorf("directory %s is not exists", reportPath))
 		} else {
-			return nil, errors.Wrap(err, "unexpected error")
+			return nil, errors.Join(err, fmt.Errorf("unexpected error"))
 		}
 	}
 
 	if !s.IsDir() {
-		return nil, errors.Errorf("file %s is not directory", reportPath)
+		return nil, fmt.Errorf("file %s is not directory", reportPath)
 	}
 
 	ls, err := os.ReadDir(reportPath)
 	if err != nil {
-		return nil, errors.Wrapf(err, "could not read directory '%s'", reportPath)
+		return nil, errors.Join(err, fmt.Errorf("could not read directory '%s'", reportPath))
 	}
 
-	fregexp := regexp.MustCompile("^report_[0-9]{2}-[0-9]{2}-[0-9]{4}.json$")
+	exp := regexp.MustCompile("^report_[0-9]{2}-[0-9]{2}-[0-9]{4}.json$")
 	result := make([]string, 0, len(ls))
 	for _, f := range ls {
 		if f.IsDir() {
@@ -121,7 +121,7 @@ func getPathOfReports(reportPath string) ([]string, error) {
 
 		n := f.Name()
 
-		if !fregexp.MatchString(n) {
+		if !exp.MatchString(n) {
 			continue
 		}
 
@@ -154,13 +154,13 @@ func handleReport(path string, remove bool) (result Result, err error) {
 	exp := regexp.MustCompile(`(3[01]|[12][0-9]|0?[1-9])-(0[1-9]|1[0-2])-(19|20)[0-9]{2}`)
 	d := exp.FindString(path)
 	if d == "" {
-		return result, errors.Errorf("not found date in report's name")
+		return result, fmt.Errorf("not found date in report's name")
 	}
 
 	//parse date as dd.mm.yyyy
 	date, err := time.Parse("02-01-2006", d)
 	if err != nil {
-		return result, errors.Wrapf(err, "could not parse date '%s' by format 'dd-mm-yyyy'", d)
+		return result, errors.Join(err, fmt.Errorf("could not parse date '%s' by format 'dd-mm-yyyy'", d))
 	}
 	// select detail from report where status equal 'error'
 	result.Date = date

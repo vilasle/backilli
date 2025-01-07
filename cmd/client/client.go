@@ -11,7 +11,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/pkg/errors"
+	"errors"
+
 	s "github.com/vilasle/backilli/internal/config"
 	p "github.com/vilasle/backilli/internal/process"
 	"github.com/vilasle/backilli/internal/report"
@@ -19,36 +20,39 @@ import (
 )
 
 func main() {
-
-	clis := cliSetting{}
-	clis.setArgs()
-	if err := clis.loadSettings(); err != nil {
-		fmt.Println("could not init settings from cli args")
-		fmt.Println(err)
-		clis.helpMessage()
+	setting := cliSetting{}
+	setting.Init()
+	if err := setting.loadSettings(); err != nil {
+		fmt.Printf("could not init settings from cli args by reason %v", err)
+		setting.helpMessage()
 		os.Exit(1)
 	}
 
-	if clis.showHelpIfIsNecessary() {
+	if setting.showHelpIfIsNecessary() {
 		return
 	}
-	defer clis.close()
+	defer setting.close()
 
-	startApplication(clis)
+	startApplication(setting)
 }
 
-func startApplication(clis cliSetting) {
+/*
+PROBLEMS
+
+	FIXME 1. on linux system does not remove old backup on yandex cloud
+*/
+func startApplication(setting cliSetting) {
 	var (
 		conf s.ProcessConfig
 		ps   *p.Process
 		err  error
 	)
 
-	logger.Init(clis.enviroment, clis.output())
+	logger.Init(setting.environment, setting.output())
 
-	logger.Info("initing procces", "path", clis.configPath)
+	logger.Info("initializing process", "path", setting.configPath)
 
-	conf, err = s.NewProcessConfig(clis.configPath)
+	conf, err = s.NewProcessConfig(setting.configPath)
 	if err != nil {
 		logger.Error("could not read config file", "error", err)
 		os.Exit(2)
@@ -82,24 +86,23 @@ func startApplication(clis cliSetting) {
 
 func saveReport(stat *p.ProcessStat, reportDate time.Time) (err error) {
 	var (
-		reportFormat     = "report_%s.json"
-		reportTimeLayout = "02-01-2006"
-		reportFile       = fmt.Sprintf(reportFormat, reportDate.Format(reportTimeLayout))
-		c                []byte
-		fd               io.WriteCloser
+		buffer []byte
+		fd     io.WriteCloser
 	)
 
-	if c, err = json.Marshal(report.InitReports(stat)); err != nil {
-		return errors.Wrap(err, "marshalling report")
+	reportFile := fmt.Sprintf("report_%s.json", reportDate.Format("02-01-2006"))
+
+	if buffer, err = json.Marshal(report.InitReports(stat)); err != nil {
+		return errors.Join(err, fmt.Errorf("marshalling report"))
 	}
 
 	if fd, err = os.Create(reportFile); err != nil {
-		return errors.Wrap(err, "creating report file")
+		return errors.Join(err, fmt.Errorf("creating report file"))
 	}
 	defer fd.Close()
 
-	if _, err = fd.Write(c); err != nil {
-		return errors.Wrapf(err, "could not write report to '%s'", reportFile)
+	if _, err = fd.Write(buffer); err != nil {
+		return errors.Join(err, fmt.Errorf("could not write report to '%s'", reportFile))
 	}
 
 	return

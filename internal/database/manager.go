@@ -1,6 +1,6 @@
 package database
 
-import "github.com/pkg/errors"
+import "fmt"
 
 type configManager interface {
 	GetAsSliceOfMaps() map[string]map[string]any
@@ -76,7 +76,7 @@ func getValueAsString(a any) (string, error) {
 	case string:
 		return v, nil
 	default:
-		return "", errors.Errorf("value is not string. %v = %T", v, v)
+		return "", fmt.Errorf("value is not string. %v = %T", v, v)
 	}
 }
 
@@ -85,6 +85,6 @@ func getValueAsInt(a any) (int, error) {
 	case int:
 		return v, nil
 	default:
-		return 0, errors.Errorf("value is not string. %v = %T", v, v)
+		return 0, fmt.Errorf("value is not string. %v = %T", v, v)
 	}
 }

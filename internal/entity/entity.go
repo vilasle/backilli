@@ -7,10 +7,9 @@ import (
 	"github.com/vilasle/backilli/pkg/fs/manager"
 )
 
-
 const (
 	execStatusSuccess = "success"
-	execStatusErr = "error"
+	execStatusErr     = "error"
 )
 
 type Entity interface {
@@ -37,10 +36,10 @@ type EntityInfo interface {
 	Err() error
 }
 
-func CreateAllEntitys(confs []BuilderConfig) ([]Entity, error) {
-	es := make([]Entity, 0, len(confs))
-	errs := make([]error, 0, len(confs))
-	for _, cf := range confs {
+func CreateAllEntities(configs []BuilderConfig) ([]Entity, error) {
+	es := make([]Entity, 0, len(configs))
+	errs := make([]error, 0, len(configs))
+	for _, cf := range configs {
 		e, err := NewEntity(cf)
 		if err != nil {
 			errs = append(errs, err)

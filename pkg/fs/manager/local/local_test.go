@@ -10,7 +10,7 @@ import (
 )
 
 func TestWrite(t *testing.T) {
-	if err := env.LoadEnvfile("test.env"); err != nil {
+	if err := env.LoadEnvFile("test.env"); err != nil {
 		t.Fatal(err)
 	}
 	pathSrc := env.Get("PATH_SRC")
@@ -61,7 +61,7 @@ func TestWrite(t *testing.T) {
 }
 
 func TestRead(t *testing.T) {
-	if err := env.LoadEnvfile("test.env"); err != nil {
+	if err := env.LoadEnvFile("test.env"); err != nil {
 		t.Fatal(err)
 	}
 	path := env.Get("PATH_SRC")
@@ -114,7 +114,7 @@ func TestRead(t *testing.T) {
 }
 
 func TestLs(t *testing.T) {
-	if err := env.LoadEnvfile("test.env"); err != nil {
+	if err := env.LoadEnvFile("test.env"); err != nil {
 		t.Fatal(err)
 	}
 	path := env.Get("PATH_DIR")
@@ -146,7 +146,7 @@ func TestLs(t *testing.T) {
 }
 
 func TestRemove(t *testing.T) {
-	if err := env.LoadEnvfile("test.env"); err != nil {
+	if err := env.LoadEnvFile("test.env"); err != nil {
 		t.Fatal(err)
 	}
 	path := env.Get("PATH_SRC")

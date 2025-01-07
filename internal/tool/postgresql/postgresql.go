@@ -5,8 +5,9 @@ import (
 	"fmt"
 	"strings"
 
+	"errors"
+
 	_ "github.com/lib/pq"
-	"github.com/pkg/errors"
 	"github.com/vilasle/backilli/pkg/fs/executing"
 )
 
@@ -57,7 +58,7 @@ func ExcludedTables(conf ConnectionConfig) ([]string, error) {
 		return nil, err
 	}
 	defer rows.Close()
-	tables := make([]string, 0, 0)
+	tables := make([]string, 0)
 
 	for rows.Next() {
 		var table string
@@ -77,7 +78,8 @@ func CopyBinary(db string, src string, dst string) (err error) {
 	args := []string{"--dbname", db, "--command", command}
 
 	if err := executing.Execute(PsqlPath, nil, &stderr, args...); err != nil {
-		return errors.Wrapf(err, "binary copying is failed. Command %s. \n stderr: %s", command, stderr.String())
+		spErr := fmt.Errorf("binary copying is failed. Command %s. \n stderr: %s", command, stderr.String())
+		return errors.Join(err, spErr)
 	}
 	return err
 }

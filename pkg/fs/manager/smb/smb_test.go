@@ -10,7 +10,7 @@ import (
 )
 
 func TestWrite(t *testing.T) {
-	if err := env.LoadEnvfile("test.env"); err != nil {
+	if err := env.LoadEnvFile("test.env"); err != nil {
 		t.Fatal(err)
 	}
 	// TODO need to fix tests
@@ -61,7 +61,7 @@ func TestWrite(t *testing.T) {
 }
 
 func TestRead(t *testing.T) {
-	if err := env.LoadEnvfile("test.env"); err != nil {
+	if err := env.LoadEnvFile("test.env"); err != nil {
 		t.Fatal(err)
 	}
 	defer func() {
@@ -103,7 +103,7 @@ func TestRead(t *testing.T) {
 	}
 
 	if len(res) != len(testSet) {
-		t.Fatal("lenght data from file does not with test sets")
+		t.Fatal("length data from file does not with test sets")
 	}
 
 	for i, s := range testSet {
@@ -115,7 +115,7 @@ func TestRead(t *testing.T) {
 }
 
 func TestLs(t *testing.T) {
-	if err := env.LoadEnvfile("test.env"); err != nil {
+	if err := env.LoadEnvFile("test.env"); err != nil {
 		t.Fatal(err)
 	}
 
@@ -150,7 +150,10 @@ func TestLs(t *testing.T) {
 	}
 
 	ls, err := client.Ls(path)
-
+	if err != nil {
+		t.Fatal(err)
+	}
+	
 	for _, v := range ls {
 		name := v.Name
 		found := false
@@ -167,7 +170,7 @@ func TestLs(t *testing.T) {
 }
 
 func TestRemove(t *testing.T) {
-	if err := env.LoadEnvfile("test.env"); err != nil {
+	if err := env.LoadEnvFile("test.env"); err != nil {
 		t.Fatal(err)
 	}
 

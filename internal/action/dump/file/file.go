@@ -2,12 +2,14 @@ package file
 
 import (
 	"bytes"
+	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
 
-	"github.com/pkg/errors"
+	"errors"
+
 	"github.com/vilasle/backilli/pkg/fs"
 	"github.com/vilasle/backilli/pkg/fs/manager/local"
 	"github.com/vilasle/backilli/pkg/fs/unit"
@@ -26,12 +28,12 @@ type Dump struct {
 	Compress        bool
 }
 
-func NewDump(src string, dst string, inclRegx *regexp.Regexp, exclRegx *regexp.Regexp, compress bool) Dump {
+func NewDump(src string, dst string, includeRegexp *regexp.Regexp, excludeRegexp *regexp.Regexp, compress bool) Dump {
 	dump := Dump{
 		PathSource:      src,
 		PathDestination: dst,
-		IncludedRegex:   inclRegx,
-		ExcludedRegex:   exclRegx,
+		IncludedRegex:   includeRegexp,
+		ExcludedRegex:   excludeRegexp,
 		Compress:        compress,
 	}
 	return dump
@@ -43,11 +45,11 @@ func (d *Dump) Dump() error {
 	var files []string
 
 	if tree, err = generateFilesTree(d.PathSource); err != nil {
-		return errors.Wrap(err, "generate tree files")
+		return errors.Join(err, errors.New("generate tree files"))
 	}
 
-	if files, err = d.getFilesForBackuping(d.PathSource, tree); err != nil {
-		return errors.Wrap(err, "checking files for backuping")
+	if files, err = d.getFilesForBackup(d.PathSource, tree); err != nil {
+		return errors.Join(err, errors.New("checking files for backup"))
 	}
 	d.setEntitySize(files)
 
@@ -76,10 +78,10 @@ func (d *Dump) Dump() error {
 		if _, err := os.Stat(d); err != nil {
 			if os.IsNotExist(err) {
 				if err := os.MkdirAll(d, os.ModePerm); err != nil {
-					return errors.Wrapf(err, "making dir '%s' failed", d)
+					return errors.Join(err, fmt.Errorf("making dir '%s' failed", d))
 				}
 			} else {
-				return errors.Wrapf(err, "does not get stat dir '%s'", d)
+				return errors.Join(err, fmt.Errorf("does not get stat dir '%s'", d))
 			}
 		}
 
@@ -91,7 +93,7 @@ func (d *Dump) Dump() error {
 
 		buf := bytes.NewBuffer(content)
 		if _, err := c.Write(buf, ft); err != nil {
-			return errors.Wrapf(err, "does not write file '%s'", ft)
+			return errors.Join(err, fmt.Errorf("does not write file '%s'", ft))
 		}
 	}
 	logger.Debug("finish copping", "files", files)
@@ -100,7 +102,7 @@ func (d *Dump) Dump() error {
 		logger.Debug("start compressing", "directory", workDirectory)
 		var bck string
 		if bck, err = fs.CompressDir(workDirectory, d.PathDestination); err != nil {
-			return errors.Wrap(err, "compressing failed")
+			return errors.Join(err, fmt.Errorf("compressing failed"))
 		}
 		d.PathDestination = bck
 
@@ -136,10 +138,10 @@ func (d *Dump) Dump() error {
 	return err
 }
 
-func (d Dump) getFilesForBackuping(path string, tree FilesTree) (files []string, err error) {
+func (d Dump) getFilesForBackup(path string, tree FilesTree) (files []string, err error) {
 	for k, v := range tree {
 		if v != nil {
-			if fsl, err := d.getFilesForBackuping(k, v); err == nil {
+			if fsl, err := d.getFilesForBackup(k, v); err == nil {
 				files = append(files, fsl...)
 			} else {
 				return nil, err

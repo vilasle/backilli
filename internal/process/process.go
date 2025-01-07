@@ -6,7 +6,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pkg/errors"
+	"errors"
+
 	"github.com/vilasle/backilli/internal/action/dump/postgresql"
 	cfg "github.com/vilasle/backilli/internal/config"
 	"github.com/vilasle/backilli/internal/database"
@@ -23,48 +24,48 @@ type Process struct {
 	t            time.Time
 	catalogs     cfg.Catalogs
 	dbmsManagers database.Managers
-	entityes     []entity.Entity
+	entities     []entity.Entity
 	volumes      Volume
 	events       eventsManager
 }
 
 func (ps *Process) Entityes() []entity.Entity {
-	return ps.entityes
+	return ps.entities
 }
 
 func InitProcess(conf cfg.ProcessConfig) (*Process, error) {
 	process := Process{}
 
 	logger.Debug("loading enviroment vars")
-	if err := conf.SetEnviroment(); err != nil {
-		return nil, errors.Wrap(err, "could not set enviroment vars")
+	if err := conf.SetEnvironment(); err != nil {
+		return nil, errors.Join(err, errors.New("could not set environment vars"))
 	}
 
-	postgresql.PG_DUMP = conf.PGDump()
+	postgresql.PGDUMP = conf.PGDump()
 	postgresql.PSQL = conf.Psql()
 	compress.Compressing = conf.Compressing()
 
 	process.catalogs = conf.Catalogs
 
-	logger.Debug("preparing config for initing volumes")
-	cfgs, err := convertConfigForFSManagers(conf.Volumes)
+	logger.Debug("preparing config for initialize volumes")
+	configs, err := convertConfigForFSManagers(conf.Volumes)
 	if err != nil {
 		return nil, err
 	}
 
-	logger.Debug("initting volumes")
-	if ms, err := manager.InitManagersFromConfigs(cfgs); err == nil {
+	logger.Debug("init volumes")
+	if ms, err := manager.InitManagersFromConfigs(configs); err == nil {
 		process.volumes = ms
 	} else {
-		return nil, errors.Wrap(err, "could not init volumes")
+		return nil, errors.Join(err, errors.New("could not init volumes"))
 	}
 
-	logger.Debug("initting database managers")
+	logger.Debug("init database managers")
 	if len(conf.DatabaseManagers) > 0 {
 		if md, err := database.InitManagersFromConfig(conf.DatabaseManagers); err == nil {
 			process.dbmsManagers = md
 		} else {
-			return nil, errors.Wrap(err, "could not init database managers")
+			return nil, errors.Join(err, errors.New("could not init database managers"))
 		}
 	} else {
 		logger.Debug("there are not database managers in config")
@@ -72,7 +73,7 @@ func InitProcess(conf cfg.ProcessConfig) (*Process, error) {
 
 	logger.Debug("init tasks")
 	if err := process.setEntityFromTask(conf.Tasks); err != nil {
-		return nil, errors.Wrap(err, "could not init tasks")
+		return nil, errors.Join(err, errors.New("could not init tasks"))
 	}
 
 	process.events = eventsManager{
@@ -90,7 +91,7 @@ func (ps *Process) Execute() error {
 	ps.t = time.Now()
 	s := entity.EntitySetting{Tempdir: ps.catalogs.Transitory}
 
-	for _, ent := range ps.entityes {
+	for _, ent := range ps.entities {
 		logger.Info("checking period rules", "task", ent)
 		if !ent.CheckPeriodRules(ps.t) {
 			logger.Info("checking did not executed. task will be skip", "task", ent)
@@ -168,20 +169,16 @@ func (ps *Process) Close() error {
 		}
 	}
 	if len(e) > 0 {
-		err := errors.New("closing error")
-		for _, ferr := range e {
-			err = errors.Wrap(err, ferr.Error())
-		}
-		return err
+		e = append(e, errors.New("could not close volumes"))
 	}
-	return nil
+	return errors.Join(e...)
 }
 
 func (p *Process) Stat() *ProcessStat {
 	stat := &ProcessStat{
 		ps:       p,
 		Date:     p.t,
-		entityes: p.entityes,
+		entities: p.entities,
 	}
 	return stat
 }

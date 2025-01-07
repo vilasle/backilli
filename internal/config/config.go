@@ -1,9 +1,9 @@
 package process
 
 import (
+	"fmt"
 	"os"
 
-	"github.com/pkg/errors"
 	"github.com/vilasle/backilli/internal/database"
 	"github.com/vilasle/backilli/internal/entity"
 	"github.com/vilasle/backilli/internal/period"
@@ -49,7 +49,7 @@ type Tool struct {
 		Frontend string `yaml:"psql"`
 		Dumping  string `yaml:"dump"`
 	} `yaml:"postgresql"`
-	Compessing struct {
+	Compressing struct {
 		Zip string `yaml:"7z"`
 	} `yaml:"compessing"`
 }
@@ -73,7 +73,7 @@ type FileConfig struct {
 }
 
 type ProcessConfig struct {
-	Env              `yaml:"enviroments"`
+	Env              `yaml:"environments"`
 	DatabaseManagers `yaml:"dbms_managers"`
 	Catalogs         `yaml:"catalogs"`
 	Volumes          []VolumeConfig `yaml:"volumes"`
@@ -96,11 +96,11 @@ type DatabaseManagers []DatabaseManager
 func (m DatabaseManagers) GetAsSliceOfMaps() map[string]map[string]any {
 	res := make(map[string]map[string]any)
 	for _, v := range m {
-		res[v.Name] = map[string]any{ 
-			"host": v.Host, 
-			"port": v.Port, 
-			"user": v.User, 
-			"password": v.Password, 
+		res[v.Name] = map[string]any{
+			"host":        v.Host,
+			"port":        v.Port,
+			"user":        v.User,
+			"password":    v.Password,
 			"dbInterface": v.Interface,
 		}
 	}
@@ -133,7 +133,7 @@ func NewProcessConfig(path string) (ProcessConfig, error) {
 	return pc, err
 }
 
-func (pc ProcessConfig) SetEnviroment() error {
+func (pc ProcessConfig) SetEnvironment() error {
 	for k, v := range pc.Env {
 		if err := env.Set(k, v); err != nil {
 			return err
@@ -151,16 +151,16 @@ func (pc *ProcessConfig) Psql() string {
 }
 
 func (pc *ProcessConfig) Compressing() string {
-	return pc.ExternalTools.Compessing.Zip
+	return pc.ExternalTools.Compressing.Zip
 }
 
 func CreateBuilderConfigFromTask(
 	task Task,
 	volumes []manager.ManagerAtomic,
-	rule period.PeriodRule, 
-	dbmanagers database.Managers) ([]entity.BuilderConfig, error) {
+	rule period.PeriodRule,
+	dbManagers database.Managers) ([]entity.BuilderConfig, error) {
 
-	cfgs := make([]entity.BuilderConfig, 0)
+	config := make([]entity.BuilderConfig, 0)
 
 	main := entity.BuilderConfig{
 		Id:         task.Id,
@@ -176,18 +176,18 @@ func CreateBuilderConfigFromTask(
 		case dbmsPostgresql:
 			c.Type = entity.POSTGRESQL
 		default:
-			return nil, errors.Errorf("unknown type of manager '%s'", db.Manager)
+			return nil, fmt.Errorf("unknown type of manager '%s'", db.Manager)
 		}
 		c.Database = db.Name
 		c.PeriodRule = rule
-		
-		if v, ok := dbmanagers[db.Manager]; ok {
+
+		if v, ok := dbManagers[db.Manager]; ok {
 			c.DatabaseManager = v
 		} else {
-			return nil, errors.Errorf("does not define database manager in task %v", db )
+			return nil, fmt.Errorf("does not define database manager in task %v", db)
 		}
 
-		cfgs = append(cfgs, c)
+		config = append(config, c)
 	}
 
 	for _, f := range task.Files {
@@ -197,7 +197,7 @@ func CreateBuilderConfigFromTask(
 		c.PeriodRule = rule
 		c.IncludeRegexp = f.IncludeRegexp
 		c.ExcludeRegexp = f.ExcludeRegexp
-		cfgs = append(cfgs, c)
+		config = append(config, c)
 	}
-	return cfgs, nil
+	return config, nil
 }

@@ -23,7 +23,7 @@ type Report struct {
 
 func InitReports(stat *ps.ProcessStat) Reports {
 	rps := make(Reports, 0)
-	for _, e := range stat.Entityes() {
+	for _, e := range stat.Entities() {
 		r := Report{
 			Date:       stat.Date,
 			Name:       e.Id(),

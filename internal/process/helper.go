@@ -1,10 +1,12 @@
 package process
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 
-	"github.com/pkg/errors"
+	"errors"
+
 	cfg "github.com/vilasle/backilli/internal/config"
 	"github.com/vilasle/backilli/internal/entity"
 	"github.com/vilasle/backilli/internal/period"
@@ -33,13 +35,13 @@ func (pc *Process) setEntityFromTask(tasks []cfg.Task) error {
 
 		cs, err := cfg.CreateBuilderConfigFromTask(v, volumes, rule, pc.dbmsManagers)
 		if err != nil {
-			return errors.Wrap(err, "there are errors on creation config tasks")
+			return errors.Join(err, fmt.Errorf("there are errors on creation config tasks"))
 		}
-		es, err := entity.CreateAllEntitys(cs)
+		es, err := entity.CreateAllEntities(cs)
 		if err != nil {
-			return errors.Wrapf(err, "could not create backup entity from config %v", cs)
+			return errors.Join(err, fmt.Errorf("could not create backup entity from config %v", cs))
 		}
-		pc.entityes = append(pc.entityes, es...)
+		pc.entities = append(pc.entities, es...)
 	}
 	return nil
 }
@@ -67,7 +69,8 @@ func convertConfigForFSManagers(ms []cfg.VolumeConfig) ([]unit.ClientConfig, err
 				if p, err := strconv.Atoi(socket[1]); err == nil {
 					c.Port = p
 				} else {
-					return nil, errors.Wrapf(err, "does not convert smb socket %s to expected type", v.Address)
+					return nil, errors.Join(err, fmt.Errorf(
+						"does not convert smb socket %s to expected type", v.Address))
 				}
 			}
 		}
@@ -91,9 +94,10 @@ func joinErrors(errs []error, mainErr error) error {
 	if len(errs) == 0 {
 		return nil
 	}
-	serr := mainErr
-	for _, err := range errs {
-		serr = errors.Wrap(serr, err.Error())
-	}
-	return serr
+
+	slErr := make([]error, 0, len(errs)+1)
+	slErr = append(slErr, mainErr)
+	slErr = append(slErr, errs...)
+
+	return errors.Join(slErr...)
 }

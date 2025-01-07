@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	_ "github.com/lib/pq"
-	"github.com/pkg/errors"
+	"errors"
 )
 
 func databasesTxt(filter []string) (string, []any) {
@@ -16,7 +16,7 @@ func databasesTxt(filter []string) (string, []any) {
 		}
 		return `SELECT datname,oid FROM pg_database WHERE datname IN ($)`, args
 	} else {
-		return `SELECT datname,oid FROM pg_database WHERE dataname IN ($)`, []any{"postgres", "template1", "template2"}
+		return `SELECT datname,oid FROM pg_database WHERE datname IN ($)`, []any{"postgres", "template1", "template2"}
 	}
 }
 
@@ -33,7 +33,7 @@ func largeTablesTxt() string {
 func Databases(conf ConnectionConfig, filter []string) ([]Database, error) {
 	db, err := conf.CreateConnection()
 	if err != nil {
-		return nil, errors.Wrapf(err, "creating connection failed, config connection = %v", conf)
+		return nil, errors.Join(err, fmt.Errorf("creating connection failed, config connection = %v", conf))
 	}
 	defer db.Close()
 	txt, args := databasesTxt(filter)
@@ -48,7 +48,7 @@ func Databases(conf ConnectionConfig, filter []string) ([]Database, error) {
 
 	rows, err := db.Query(txt, args...)
 	if err != nil {
-		return nil, errors.Wrapf(err, "error txt= %s, args = %v", txt, args)
+		return nil, errors.Join(err, fmt.Errorf("error txt= %s, args = %v", txt, args))
 	}
 	defer rows.Close()
 	dbs := []Database{}
@@ -67,16 +67,16 @@ func Databases(conf ConnectionConfig, filter []string) ([]Database, error) {
 func ExcludedTables(conf ConnectionConfig) ([]string, error) {
 	db, err := conf.CreateConnection()
 	if err != nil {
-		return nil, errors.Wrapf(err, "creating connection failed, config connection = %v", conf)
+		return nil, errors.Join(err, fmt.Errorf("creating connection failed, config connection = %v", conf))
 	}
 	defer db.Close()
 	txt := largeTablesTxt()
 	rows, err := db.Query(txt)
 	if err != nil {
-		return nil, errors.Wrapf(err, "error query = %s", txt)
+		return nil, errors.Join(err, fmt.Errorf("error query = %s", txt))
 	}
 	defer rows.Close()
-	tables := make([]string, 0, 0)
+	tables := make([]string, 0)
 
 	for rows.Next() {
 		var table string
@@ -92,7 +92,7 @@ func ExcludedTables(conf ConnectionConfig) ([]string, error) {
 func DatabaseSize(conf ConnectionConfig) (int64, error) {
 	db, err := conf.CreateConnection()
 	if err != nil {
-		return 0, errors.Wrapf(err, "creating connection failed, config connection = %v", conf)
+		return 0, errors.Join(err, fmt.Errorf("creating connection failed, config connection = %v", conf))
 	}
 	defer db.Close()
 	row := db.QueryRow("select pg_database_size($1)", conf.Database.Name)

@@ -8,7 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pkg/errors"
+	"errors"
+
 	"github.com/vilasle/backilli/internal/action/dump/file"
 	"github.com/vilasle/backilli/internal/period"
 	"github.com/vilasle/backilli/pkg/fs"
@@ -17,28 +18,28 @@ import (
 )
 
 type fileEntity struct {
-	id       string
-	compress bool
-	srcfl    string
-	fsmngr   []manager.ManagerAtomic
-	iregexp  *regexp.Regexp
-	eregexp  *regexp.Regexp
-	pr       period.PeriodRule
-	srcsize  int64
-	dstsize  int64
-	bckfls   []string
-	st       time.Time
-	et       time.Time
-	keep     int
-	status   string
-	bckpaths []string
-	err      error
+	id            string
+	compress      bool
+	srcFile       string
+	fsManagers    []manager.ManagerAtomic
+	includeRegexp *regexp.Regexp
+	excludeRegexp *regexp.Regexp
+	pr            period.PeriodRule
+	srcSize       int64
+	dstSize       int64
+	backupFiles   []string
+	st            time.Time
+	et            time.Time
+	keep          int
+	status        string
+	backupPaths   []string
+	err           error
 }
 
 func newFileEntity(conf BuilderConfig) (*fileEntity, error) {
 	e := &fileEntity{
 		id:       conf.Id,
-		srcfl:    conf.FilePath,
+		srcFile:  conf.FilePath,
 		compress: conf.Compress,
 		pr:       conf.PeriodRule,
 		keep:     conf.Keep,
@@ -46,20 +47,20 @@ func newFileEntity(conf BuilderConfig) (*fileEntity, error) {
 
 	if len(conf.IncludeRegexp) > 0 {
 		if re, err := regexp.Compile(conf.IncludeRegexp); err == nil {
-			e.iregexp = re
+			e.includeRegexp = re
 		} else {
-			return nil, errors.Wrap(err, "could not init the included regexp")
+			return nil, errors.Join(err, errors.New("could not init the included regexp"))
 		}
 	}
 
 	if len(conf.ExcludeRegexp) > 0 {
 		if re, err := regexp.Compile(conf.ExcludeRegexp); err == nil {
-			e.eregexp = re
+			e.excludeRegexp = re
 		} else {
-			return nil, errors.Wrap(err, "could not init the excluded regexp")
+			return nil, errors.Join(err, errors.New("could not init the excluded regexp"))
 		}
 	}
-	e.fsmngr = conf.FsManagers
+	e.fsManagers = conf.FsManagers
 
 	return e, nil
 }
@@ -78,12 +79,12 @@ func (e *fileEntity) Backup(s EntitySetting, t time.Time) {
 		}
 	}()
 
-	stat, err := os.Stat(e.srcfl)
+	stat, err := os.Stat(e.srcFile)
 	if err != nil {
 		e.err = err
 		return
 	}
-	
+
 	temp, err := prepareTempPlace(s.Tempdir, stat.Name())
 	if err != nil {
 		e.err = err
@@ -91,16 +92,16 @@ func (e *fileEntity) Backup(s EntitySetting, t time.Time) {
 	}
 	logger.Debug("temp place", "temp", temp)
 
-	dump := file.NewDump(e.srcfl, temp, e.iregexp, e.eregexp, e.compress)
+	dump := file.NewDump(e.srcFile, temp, e.includeRegexp, e.excludeRegexp, e.compress)
 	logger.Debug("starting dumping", "dump", dump)
 	if err := dump.Dump(); err != nil {
 		e.err = err
 		return
 	}
 	logger.Debug("finish dumping", "dump", dump)
-	
-	e.dstsize = dump.DestinationSize
-	e.srcsize = dump.SourceSize
+
+	e.dstSize = dump.DestinationSize
+	e.srcSize = dump.SourceSize
 	ls, err := os.ReadDir(filepath.Dir(dump.PathDestination))
 	if err != nil {
 		e.err = err
@@ -124,14 +125,14 @@ func (e *fileEntity) Backup(s EntitySetting, t time.Time) {
 		return
 	}
 	//
-	e.bckfls = files
+	e.backupFiles = files
 
 	defer clearTempFile(temp, temp)
 	defer clearTempFile(temp, files...)
 
 	defer clearTempFile(temp, temp, dump.PathDestination)
 
-	if e.bckpaths, err = moveBackupToDestination(e, t); err != nil {
+	if e.backupPaths, err = moveBackupToDestination(e, t); err != nil {
 		e.err = err
 	}
 
@@ -143,11 +144,11 @@ func (e fileEntity) Err() error {
 }
 
 func (e fileEntity) EntitySize() int64 {
-	return e.srcsize
+	return e.srcSize
 }
 
 func (e fileEntity) BackupSize() int64 {
-	return e.dstsize
+	return e.dstSize
 }
 
 func (e fileEntity) CheckPeriodRules(now time.Time) bool {
@@ -164,11 +165,11 @@ func (e fileEntity) CheckPeriodRules(now time.Time) bool {
 }
 
 func (e fileEntity) BackupFilePath() []string {
-	return e.bckfls
+	return e.backupFiles
 }
 
 func (e fileEntity) FileManagers() []manager.ManagerAtomic {
-	return e.fsmngr
+	return e.fsManagers
 }
 
 func (e fileEntity) StartTime() time.Time {
@@ -180,7 +181,7 @@ func (e fileEntity) EndTime() time.Time {
 }
 
 func (e fileEntity) OID() string {
-	return filepath.Base(e.srcfl)
+	return filepath.Base(e.srcFile)
 }
 
 func (e fileEntity) Status() string {
@@ -188,7 +189,7 @@ func (e fileEntity) Status() string {
 }
 
 func (e fileEntity) BackupPaths() []string {
-	return e.bckpaths
+	return e.backupPaths
 }
 
 func (e *fileEntity) clearOldCopies() {

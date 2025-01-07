@@ -10,7 +10,7 @@ import (
 	"strconv"
 	"strings"
 
-	pgdb "github.com/vilasle/backilli/internal/database/postgresql"
+	manager "github.com/vilasle/backilli/internal/database/postgresql"
 	"github.com/vilasle/backilli/pkg/fs"
 	"github.com/vilasle/backilli/pkg/fs/environment"
 	"github.com/vilasle/backilli/pkg/fs/executing"
@@ -18,7 +18,7 @@ import (
 )
 
 var (
-	PG_DUMP = "pg_dump"
+	PGDUMP = "pg_dump"
 )
 
 type Dump struct {
@@ -28,12 +28,12 @@ type Dump struct {
 	Compress        bool
 	SourceSize      int64
 	DestinationSize int64
-	pgdb.ConnectionConfig
+	manager.ConnectionConfig
 	stdout bytes.Buffer
 	stderr bytes.Buffer
 }
 
-func NewDump(database string, dst string, compress bool, conf pgdb.ConnectionConfig, excludedTable ...string) Dump {
+func NewDump(database string, dst string, compress bool, conf manager.ConnectionConfig, excludedTable ...string) Dump {
 	dump := Dump{
 		Database:         database,
 		PathDestination:  dst,
@@ -60,8 +60,8 @@ func (d *Dump) Dump() (err error) {
 		return err
 	}
 
-	logicalbc := fs.GetFullPath("", d.PathDestination, "logical")
-	workDirectory := filepath.Dir(logicalbc)
+	logicalBackupPath := fs.GetFullPath("", d.PathDestination, "logical")
+	workDirectory := filepath.Dir(logicalBackupPath)
 
 	quantityOfJobs := int(float32(runtime.NumCPU()) * 0.25)
 	if quantityOfJobs < 1 {
@@ -73,28 +73,29 @@ func (d *Dump) Dump() (err error) {
 		"--jobs", strconv.Itoa(quantityOfJobs),
 		"--blobs",
 		"--encoding", "UTF8",
-		"--verbose", "--file", logicalbc,
+		"--verbose", "--file", logicalBackupPath,
 		"--dbname", d.Database)
 
 	excludingArgs(args, d.ExcludedTable)
 
-	logger.Debug("start logical dumping", "exe", PG_DUMP, "args", args)
-	if err := executing.Execute(PG_DUMP, &d.stdout, &d.stderr, args...); err != nil {
-		if err != nil {
-			return fmt.Errorf(d.stderr.String(), err)
-		}
+	logger.Debug("start logical dumping", "exe", PGDUMP, "args", args)
 
-		if err := d.checkLogs(); err != nil {
-			return err
-		}
+	err = executing.Execute(PGDUMP, &d.stdout, &d.stderr, args...)
+	if err != nil {
+		return fmt.Errorf(d.stderr.String(), err)
 	}
+
+	if err := d.checkLogs(); err != nil {
+		return err
+	}
+	
 	logger.Debug("finish logical dumping")
 
 	logger.Debug("start binary copping", "tables", d.ExcludedTable)
 	if len(d.ExcludedTable) > 0 {
-		binarybc := fs.GetFullPath("", d.PathDestination, "binary")
-		if _, err := os.Stat(binarybc); os.IsNotExist(err) {
-			err = os.MkdirAll(binarybc, os.ModePerm)
+		binaryPath := fs.GetFullPath("", d.PathDestination, "binary")
+		if _, err := os.Stat(binaryPath); os.IsNotExist(err) {
+			err = os.MkdirAll(binaryPath, os.ModePerm)
 			if err != nil {
 				return err
 			}
@@ -102,7 +103,7 @@ func (d *Dump) Dump() (err error) {
 
 		for i := range d.ExcludedTable {
 			table := d.ExcludedTable[i]
-			tablePath := fs.GetFullPath("", binarybc, table)
+			tablePath := fs.GetFullPath("", binaryPath, table)
 			if err := CopyBinary(d.Database, table, tablePath); err != nil {
 				return err
 			}
@@ -151,8 +152,8 @@ func (d *Dump) Dump() (err error) {
 }
 
 func (d *Dump) checkLogs() error {
-	fout := fmt.Sprintf("%s.log", d.Database)
-	out, err := os.Create(fout)
+	pathOut := fmt.Sprintf("%s.log", d.Database)
+	out, err := os.Create(pathOut)
 	if err != nil {
 		return err
 	}
@@ -162,21 +163,21 @@ func (d *Dump) checkLogs() error {
 		wrt.Write(d.stderr.Bytes())
 	}
 	wrt.Flush()
-	if isErrors, err := d.findErrorInDumpLog(fout); err != nil {
+	if isErrors, err := d.findErrorInDumpLog(pathOut); err != nil {
 		return err
 	} else if isErrors {
 		out.Close()
-		return fmt.Errorf("dumping ended with errors. check dumping log %s", fout)
+		return fmt.Errorf("dumping ended with errors. check dumping log %s", pathOut)
 	}
 	out.Close()
-	if err := os.Remove(fout); err != nil {
+	if err := os.Remove(pathOut); err != nil {
 		return err
 	}
 	return nil
 }
 
 func (d *Dump) setSourceSize() error {
-	if size, err := pgdb.DatabaseSize(d.ConnectionConfig); err == nil {
+	if size, err := manager.DatabaseSize(d.ConnectionConfig); err == nil {
 		d.SourceSize = size
 		return nil
 	} else {

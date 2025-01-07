@@ -196,7 +196,7 @@ func putFileIntoMemory(path string) ([]byte, error) {
 
 func ClearOldCopies(e EntityInfo, keep int) ([]string, error) {
 	arErr := make([]error, 0)
-	arrmd := make([]string, 0)
+	arrMd := make([]string, 0)
 
 	for _, m := range e.FileManagers() {
 		ls, err := m.Ls(e.Id())
@@ -206,6 +206,8 @@ func ClearOldCopies(e EntityInfo, keep int) ([]string, error) {
 			}
 			return nil, err
 		}
+
+		logger.Debug("list of backups", "list", ls)
 
 		sort.Slice(ls, func(i, j int) bool {
 			var xt, yt time.Time
@@ -245,7 +247,7 @@ func ClearOldCopies(e EntityInfo, keep int) ([]string, error) {
 					if err := m.Remove(rmf); err != nil {
 						arErr = append(arErr, err)
 					} else {
-						arrmd = append(arrmd, rmf)
+						arrMd = append(arrMd, rmf)
 					}
 				}
 			}
@@ -257,7 +259,7 @@ func ClearOldCopies(e EntityInfo, keep int) ([]string, error) {
 
 			if len(localLs) == 0 {
 				if err := m.Remove(path); err != nil {
-					arrmd = append(arrmd, path)
+					arrMd = append(arrMd, path)
 				}
 			}
 		}
@@ -266,6 +268,6 @@ func ClearOldCopies(e EntityInfo, keep int) ([]string, error) {
 	if len(arErr) > 0 {
 		return nil, errors.Join(arErr...)
 	} else {
-		return arrmd, nil
+		return arrMd, nil
 	}
 }

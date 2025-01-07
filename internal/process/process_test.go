@@ -9,7 +9,7 @@ import (
 )
 
 func TestNewProcessConfig(t *testing.T) {
-	if err := env.LoadEnvfile("test.env"); err != nil {
+	if err := env.LoadEnvFile("test.env"); err != nil {
 		t.Fatal(err)
 	}
 
@@ -21,7 +21,7 @@ func TestNewProcessConfig(t *testing.T) {
 }
 
 func TestInitProcess(t *testing.T) {
-	if err := env.LoadEnvfile("test.env"); err != nil {
+	if err := env.LoadEnvFile("test.env"); err != nil {
 		t.Fatal(err)
 	}
 	logger.Init("local", nil)

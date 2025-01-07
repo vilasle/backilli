@@ -4,31 +4,39 @@ import (
 	"io"
 	"os"
 
-	"github.com/pkg/errors"
+	"errors"
+
 	"github.com/spf13/pflag"
+	"gopkg.in/natefinch/lumberjack.v2"
+)
+
+var (
+	errRequiredArguments    = errors.New("required arguments are not filled")
+	errConfigFile           = errors.New("config file is not exists")
+	errNotDefinedConfigFile = errors.New("does not define config file")
 )
 
 type cliSetting struct {
-	configPath string
-	showHelp   bool
-	loggerPath string
-	enviroment string
-	logOut     io.WriteCloser
+	configPath  string
+	showHelp    bool
+	loggerPath  string
+	environment string
+	logOut      io.WriteCloser
 }
 
-func (c *cliSetting) setArgs() {
+func (c *cliSetting) Init() {
 	pflag.BoolVarP(&c.showHelp, "help", "",
 		false,
 		"Print help message")
 	pflag.StringVarP(&c.configPath, "config", "c",
 		"",
-		"Config file with setting of client. This supports YML file only")
+		"Config file with setting of client. This supports YAML file only")
 	pflag.StringVarP(&c.loggerPath, "log", "l",
 		"",
 		"Path to log file. If is not filled then log will write to stdout")
-	pflag.StringVarP(&c.enviroment, "env", "e",
+	pflag.StringVarP(&c.environment, "env", "e",
 		"local",
-		"kind of enviroment running. Log level and format depend on this")
+		"kind of environment running. Log level and format depend on this")
 	pflag.Parse()
 }
 
@@ -36,30 +44,23 @@ func (c cliSetting) output() io.WriteCloser {
 	return c.logOut
 }
 
-func (c *cliSetting) loadSettings() error {
+func (c *cliSetting) loadSettings() (err error) {
 	if err := c.checkArgs(); err != nil {
-		return errors.Wrap(err, "checking required arguments")
+		return errors.Join(err, errRequiredArguments)
 	}
 
-	wrt, err := c.defineLogDestination()
-	if err != nil {
-		return errors.Wrap(err, "getting log file was failed")
-	}
-
-	c.logOut = wrt
+	c.logOut = c.defineLogDestination()
 
 	if _, err := os.Stat(c.configPath); os.IsNotExist(err) {
-		return errors.Wrap(err, "config file is not exists")
+		return errors.Join(err, errConfigFile)
 	}
 	return nil
 }
 
 func (c *cliSetting) checkArgs() error {
-
 	if c.configPath == "" {
-		return errors.New("does not define config file")
+		return errNotDefinedConfigFile
 	}
-
 	return nil
 }
 
@@ -70,19 +71,18 @@ func (c cliSetting) showHelpIfIsNecessary() bool {
 	return c.showHelp
 }
 
-func (c cliSetting) defineLogDestination() (io.WriteCloser, error) {
-	var (
-		wrt io.WriteCloser
-		err error
-	)
+func (c cliSetting) defineLogDestination() io.WriteCloser {
 	if c.loggerPath == "" {
-		return os.Stdout, nil
+		return os.Stdout
 	}
 
-	if wrt, err = os.OpenFile(c.loggerPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, os.ModePerm); err != nil {
-		return os.Stdout, errors.Wrapf(err, "can not open file. Log will write to stdout")
+	return &lumberjack.Logger{
+		Filename:   c.loggerPath,
+		MaxSize:    10,
+		MaxAge:     10,
+		MaxBackups: 10,
+		Compress:   true,
 	}
-	return wrt, nil
 }
 
 func (c cliSetting) helpMessage() {
