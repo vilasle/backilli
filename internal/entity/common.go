@@ -227,9 +227,14 @@ func ClearOldCopies(e EntityInfo, keep int) ([]string, error) {
 			return xt.Before(yt)
 		})
 
+		logger.Debug("condition of removing old copies", "keep", keep, "qty", len(ls))
+
 		if len(ls) <= keep {
+			logger.Debug("don't need to remove old copies")
 			continue
 		}
+
+		logger.Debug("removing old copies", "qty", len(ls)-keep)
 
 		remove := ls[:len(ls)-keep]
 
