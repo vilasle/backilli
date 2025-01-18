@@ -17,6 +17,8 @@ type Database struct {
 type ConnectionConfig struct {
 	User     string
 	Password string
+	Host     string
+	Port     string
 	Database
 	SSlMode bool
 }

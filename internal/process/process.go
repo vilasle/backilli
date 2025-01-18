@@ -36,7 +36,7 @@ func (ps *Process) Entityes() []entity.Entity {
 func InitProcess(conf cfg.ProcessConfig) (*Process, error) {
 	process := Process{}
 
-	logger.Debug("loading enviroment vars")
+	logger.Debug("loading environment vars")
 	if err := conf.SetEnvironment(); err != nil {
 		return nil, errors.Join(err, errors.New("could not set environment vars"))
 	}

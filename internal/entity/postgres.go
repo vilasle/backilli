@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"time"
 
@@ -17,12 +18,12 @@ import (
 )
 
 type postgresEntity struct {
-	id       string
-	database string
-	compress bool
-	fsmngr   []manager.ManagerAtomic
-	period   period.PeriodRule
-	cnfconn  pgdb.ConnectionConfig
+	id          string
+	database    string
+	compress    bool
+	fsmngr      []manager.ManagerAtomic
+	period      period.PeriodRule
+	cnfconn     pgdb.ConnectionConfig
 	entitySize  int64
 	backupSize  int64
 	backupFiles []string
@@ -43,10 +44,13 @@ func newPsqlEntity(conf BuilderConfig) (*postgresEntity, error) {
 		keep:     conf.Keep,
 	}
 
-	u, p := conf.DatabaseManager.GetAuth()
+	usr, password := conf.DatabaseManager.GetAuth()
+	host, port := conf.DatabaseManager.GetSocket()
 	e.cnfconn = pgdb.ConnectionConfig{
-		User:     u,
-		Password: p,
+		User:     usr,
+		Password: password,
+		Host:     host,
+		Port:     strconv.Itoa(port),
 		SSlMode:  false,
 	}
 	e.fsmngr = conf.FsManagers
@@ -99,7 +103,7 @@ func (e *postgresEntity) Backup(s EntitySetting, t time.Time) {
 		return
 	}
 	logger.Debug("finish dumping", "dump", dump)
-	
+
 	e.backupSize = dump.DestinationSize
 	e.entitySize = dump.SourceSize
 

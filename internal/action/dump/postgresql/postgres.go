@@ -47,6 +47,13 @@ func NewDump(database string, dst string, compress bool, conf manager.Connection
 }
 
 func (d *Dump) Dump() (err error) {
+	if err := environment.Set("PGHOST", d.Host); err != nil {
+		return err
+	}
+
+	if err := environment.Set("PGPORT", d.Port); err != nil {
+		return err
+	}
 
 	if err := environment.Set("PGUSER", d.User); err != nil {
 		return err
@@ -88,7 +95,7 @@ func (d *Dump) Dump() (err error) {
 	if err := d.checkLogs(); err != nil {
 		return err
 	}
-	
+
 	logger.Debug("finish logical dumping")
 
 	logger.Debug("start binary copping", "tables", d.ExcludedTable)
@@ -111,7 +118,7 @@ func (d *Dump) Dump() (err error) {
 	}
 	logger.Debug("finish binary copping", "tables", d.ExcludedTable)
 
-	if d.Compress {	
+	if d.Compress {
 		logger.Debug("start compressing", "directory", workDirectory)
 		bck, err := fs.CompressDir(workDirectory, d.PathDestination)
 		if err != nil {
