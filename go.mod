@@ -8,7 +8,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.30.0
 	github.com/hirochachacha/go-smb2 v1.1.0
 	github.com/lib/pq v1.10.7
-	github.com/spf13/pflag v1.0.5 //drop
+	github.com/spf13/pflag v1.0.9 //drop
 	gopkg.in/yaml.v2 v2.2.8
 )
 
@@ -31,4 +31,9 @@ require (
 	github.com/geoffgarside/ber v1.1.0 // indirect
 	golang.org/x/crypto v0.0.0-20200728195943-123391ffb6de // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1
+)
+
+require (
+	github.com/inconshreveable/mousetrap v1.1.0 // indirect
+	github.com/spf13/cobra v1.10.1 // indirect
 )
