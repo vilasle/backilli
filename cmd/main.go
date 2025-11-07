@@ -1,10 +1,11 @@
 /*
 Copyright © 2025 NAME HERE <EMAIL ADDRESS>
-
 */
 package main
 
-import "github.com/vilasle/backilli/cmd"
+import (
+	cmd "github.com/vilasle/backilli/cmd/operation"
+)
 
 func main() {
 	cmd.Execute()
